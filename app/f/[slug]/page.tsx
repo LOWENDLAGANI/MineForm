@@ -4,7 +4,10 @@
  * Public form renderer — respondent view. Loads a published form by slug,
  * starts a response (server stamps the quiz deadline), renders visible
  * questions with FieldRenderer, and submits through the gated public API.
- * Mobile-first: large touch targets, sticky timer bar, clear progress.
+ *
+ * Visual language: white card floating on the blue diagonal brand backdrop,
+ * blue accents. Mobile-first: the card fills the viewport edge-to-edge with a
+ * small gutter; the submit bar docks to the bottom.
  *
  * Renderer modes: "classic" (all questions on one page) and "conversational"
  * (one question per screen with animations).
@@ -78,6 +81,34 @@ function formatTime(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+const ACCENT = "#2563eb"; // blue-600
+
+/* Full-viewport message states share one centered white card. */
+function StateCard({
+  icon,
+  title,
+  body,
+  children,
+}: {
+  icon: string;
+  title: string;
+  body?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+      <div className="card-in w-full max-w-md rounded-2xl bg-white p-7 text-center shadow-xl shadow-blue-950/20">
+        <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-blue-50 text-2xl">
+          {icon}
+        </div>
+        <p className="mt-4 text-base font-semibold text-zinc-900">{title}</p>
+        {body && <p className="mt-1.5 text-sm leading-relaxed text-zinc-500">{body}</p>}
+        {children}
+      </div>
+    </main>
+  );
 }
 
 export default function PublicFormPage() {
@@ -214,8 +245,6 @@ export default function PublicFormPage() {
 
   // --- Local autosave (debounced) -----------------------------------------
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const responseIdRef = useRef<string | null>(null);
-  responseIdRef.current = responseId;
 
   useEffect(() => {
     if (!responseId || !hasAnyAnswer || submittedRef.current) return;
@@ -237,20 +266,17 @@ export default function PublicFormPage() {
 
   // Offer restoring a local draft once, on first render after questions load
   const [localDraftPrompt, setLocalDraftPrompt] = useState<Record<string, FieldValue> | null>(null);
-  // localStorage drafts store raw JSON values; coerce back to FieldValue.
-  const coerceDraftValues = (raw: Record<string, unknown>): Record<string, FieldValue> => {
-    const out: Record<string, FieldValue> = {};
-    for (const [k, v] of Object.entries(raw)) {
-      if (v === null || typeof v === "string" || typeof v === "number") out[k] = v;
-      else if (Array.isArray(v)) out[k] = v.map(String);
-    }
-    return out;
-  };
   useEffect(() => {
     if (!form || responseId || resumeToken) return;
     const draft = loadLocalDraft(slug);
     if (draft && Object.keys(draft.values).length > 0) {
-      setLocalDraftPrompt(coerceDraftValues(draft.values));
+      // localStorage drafts store raw JSON values; coerce back to FieldValue.
+      const out: Record<string, FieldValue> = {};
+      for (const [k, v] of Object.entries(draft.values)) {
+        if (v === null || typeof v === "string" || typeof v === "number") out[k] = v;
+        else if (Array.isArray(v)) out[k] = v.map(String);
+      }
+      setLocalDraftPrompt(out);
     }
   }, [form, slug, responseId, resumeToken]);
 
@@ -369,49 +395,54 @@ export default function PublicFormPage() {
 
   if (loadError) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-10">
-        <div className="rounded-lg border border-zinc-200 p-6 text-center">
-          <p className="text-sm font-medium text-zinc-900">Can't open this form</p>
-          <p className="mt-2 text-sm text-zinc-500">{loadError}</p>
-        </div>
-      </main>
+      <div className="brand-backdrop">
+        <StateCard
+          icon="⚠️"
+          title="Can't open this form"
+          body={loadError}
+        />
+      </div>
     );
   }
 
   if (submitted) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-10">
-        <div className="rounded-lg border border-zinc-200 p-8 text-center">
-          <div className="mx-auto grid h-12 w-12 place-items-center rounded-full border border-zinc-900 text-xl">
-            ✓
-          </div>
-          <p className="mt-4 text-base font-medium text-zinc-900">Response submitted</p>
-          <p className="mt-1 text-sm text-zinc-500">Thanks — you can close this page now.</p>
-        </div>
-      </main>
+      <div className="brand-backdrop">
+        <StateCard
+          icon="✓"
+          title="Response submitted"
+          body="Thanks — you can close this page now."
+        />
+      </div>
     );
   }
 
   if (!form) {
     return (
-      <main className="mx-auto max-w-md px-5 py-20">
-        <p className="text-center text-sm text-zinc-400">Loading…</p>
-      </main>
+      <div className="brand-backdrop">
+        <main className="flex min-h-dvh items-center justify-center">
+          <div className="flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm text-white backdrop-blur">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+            Loading…
+          </div>
+        </main>
+      </div>
     );
   }
 
   if (form.is_closed || form.is_capped) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-10">
-        <div className="rounded-lg border border-zinc-200 p-6 text-center">
-          <p className="text-sm font-medium text-zinc-900">This form is closed</p>
-          <p className="mt-2 text-sm text-zinc-500">
-            {form.is_capped
+      <div className="brand-backdrop">
+        <StateCard
+          icon="🔒"
+          title="This form is closed"
+          body={
+            form.is_capped
               ? `It has reached its limit of ${form.response_cap} responses.`
-              : "It is no longer accepting responses."}
-          </p>
-        </div>
-      </main>
+              : "It is no longer accepting responses."
+          }
+        />
+      </div>
     );
   }
 
@@ -421,88 +452,91 @@ export default function PublicFormPage() {
 
   if (!responseId) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 py-10">
-        <div>
-          <h1 className="text-xl font-medium text-zinc-900">{form.title}</h1>
-          {form.description && (
-            <p className="mt-2 text-sm text-zinc-500">{form.description}</p>
-          )}
-
-          <div className="mt-6 space-y-2 rounded-lg border border-zinc-200 p-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-zinc-500">Questions</span>
-              <span className="font-medium text-zinc-900">{questions.length}</span>
+      <div className="brand-backdrop">
+        <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+          <div className="card-in w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl shadow-blue-950/20">
+            {/* Dark header band, like the reference */}
+            <div className="bg-slate-800 px-6 py-4">
+              <h1 className="truncate text-base font-semibold text-white">{form.title}</h1>
             </div>
-            {form.time_limit_minutes && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-zinc-500">Time limit</span>
-                <span className="font-medium text-zinc-900">{form.time_limit_minutes} min</span>
-              </div>
-            )}
-            {form.response_cap !== null && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-zinc-500">Spots left</span>
-                <span className="font-medium text-zinc-900">
-                  {Math.max(0, form.response_cap - form.submitted_count)}
-                </span>
-              </div>
-            )}
-          </div>
 
-          {localDraftPrompt && (
-            <div className="mt-4 rounded-lg border border-zinc-300 bg-zinc-50 p-4">
-              <p className="text-sm font-medium text-zinc-900">Welcome back</p>
-              <p className="mt-1 text-xs text-zinc-500">
-                You have unsaved answers on this device from your last visit.
+            <div className="px-6 py-6">
+              {form.description && (
+                <p className="text-sm leading-relaxed text-zinc-500">{form.description}</p>
+              )}
+
+              <div className="mt-5 space-y-2.5">
+                <div className="flex items-center justify-between rounded-lg bg-blue-50/70 px-3.5 py-2.5 text-sm">
+                  <span className="text-zinc-500">Questions</span>
+                  <span className="font-semibold text-zinc-900">{questions.length}</span>
+                </div>
+                {form.time_limit_minutes && (
+                  <div className="flex items-center justify-between rounded-lg bg-blue-50/70 px-3.5 py-2.5 text-sm">
+                    <span className="text-zinc-500">Time limit</span>
+                    <span className="font-semibold text-zinc-900">{form.time_limit_minutes} min</span>
+                  </div>
+                )}
+                {form.response_cap !== null && (
+                  <div className="flex items-center justify-between rounded-lg bg-blue-50/70 px-3.5 py-2.5 text-sm">
+                    <span className="text-zinc-500">Spots left</span>
+                    <span className="font-semibold text-zinc-900">
+                      {Math.max(0, form.response_cap - form.submitted_count)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {localDraftPrompt && (
+                <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/70 p-4">
+                  <p className="text-sm font-semibold text-zinc-900">Welcome back</p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    You have answers on this device from your last visit.
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => start(localDraftPrompt)}
+                      disabled={starting}
+                      className="flex-1 rounded-full bg-blue-600 px-3 py-2.5 text-xs font-semibold text-white shadow-sm shadow-blue-600/30 hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      Continue where I left off
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        clearLocalDraft(slug);
+                        setLocalDraftPrompt(null);
+                      }}
+                      className="rounded-full border border-zinc-200 px-3 py-2.5 text-xs text-zinc-500 hover:border-zinc-400"
+                    >
+                      Discard
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <p className="mt-4 text-xs leading-relaxed text-zinc-400">
+                {form.time_limit_minutes
+                  ? "⏱ The timer starts as soon as you tap the button below."
+                  : "Your progress is saved automatically on this device — you can finish later."}
               </p>
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => start(localDraftPrompt)}
-                  disabled={starting}
-                  className="flex-1 rounded-md bg-zinc-900 px-3 py-2 text-xs font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
-                >
-                  Continue where I left off
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    clearLocalDraft(slug);
-                    setLocalDraftPrompt(null);
-                  }}
-                  className="rounded-md border border-zinc-300 px-3 py-2 text-xs text-zinc-600 hover:border-zinc-900"
-                >
-                  Discard
-                </button>
-              </div>
+
+              <button
+                type="button"
+                onClick={() => start()}
+                disabled={starting}
+                className="mt-5 w-full rounded-full bg-blue-600 px-4 py-4 text-base font-semibold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-700 active:scale-[0.99] disabled:opacity-50"
+              >
+                {starting
+                  ? "Starting…"
+                  : form.time_limit_minutes
+                    ? "Start timed form"
+                    : "Start"}
+              </button>
             </div>
-          )}
-
-          {form.time_limit_minutes && (
-            <p className="mt-3 text-xs text-zinc-500">
-              ⏱ The timer starts as soon as you tap the button below.
-            </p>
-          )}
-          {!form.time_limit_minutes && (
-            <p className="mt-3 text-xs text-zinc-500">
-              Your progress is saved automatically on this device — you can finish later.
-            </p>
-          )}
-
-          <button
-            type="button"
-            onClick={() => start()}
-            disabled={starting}
-            className="mt-6 w-full rounded-lg bg-zinc-900 px-4 py-4 text-base font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
-          >
-            {starting
-              ? "Starting…"
-              : form.time_limit_minutes
-                ? "Start timed form"
-                : "Start"}
-          </button>
-        </div>
-      </main>
+          </div>
+        </main>
+      </div>
     );
   }
 
@@ -510,30 +544,29 @@ export default function PublicFormPage() {
 
   if (expired) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-10">
-        <div className="rounded-lg border border-zinc-200 p-6 text-center">
-          <p className="text-sm font-medium text-red-600">Time's up</p>
-          <p className="mt-2 text-sm text-zinc-500">
-            This response can no longer be submitted because the time limit ran out.
-          </p>
-        </div>
-      </main>
+      <div className="brand-backdrop">
+        <StateCard
+          icon="⏱"
+          title="Time's up"
+          body="This response can no longer be submitted because the time limit ran out."
+        />
+      </div>
     );
   }
 
   const lowTime = remaining !== null && remaining <= 60;
-  const accent = "#18181b";
 
-  const footer = (
+  // Shared "Save & finish later" block
+  const saveAndResumeBlock = (
     <div className="space-y-2">
       {submitError && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-center text-sm text-red-700" role="alert">
+        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
           {submitError}
         </p>
       )}
       {savedLink && (
-        <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-left">
-          <p className="text-xs font-medium text-emerald-800">Progress saved ✓</p>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-left">
+          <p className="text-xs font-semibold text-emerald-800">Progress saved ✓</p>
           <p className="mt-1 break-all font-mono text-[11px] text-emerald-700">{savedLink}</p>
           <div className="mt-2 flex gap-2">
             <button
@@ -547,14 +580,14 @@ export default function PublicFormPage() {
                   // Clipboard unavailable — the link is visible above.
                 }
               }}
-              className="rounded-md bg-emerald-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-800"
+              className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
             >
               {draftCopied ? "Copied!" : "Copy link"}
             </button>
             <button
               type="button"
               onClick={() => setSavedLink(null)}
-              className="rounded-md border border-emerald-300 px-2.5 py-1 text-xs text-emerald-800 hover:border-emerald-700"
+              className="rounded-full border border-emerald-300 px-3 py-1.5 text-xs text-emerald-800 hover:border-emerald-600"
             >
               Keep answering
             </button>
@@ -566,7 +599,7 @@ export default function PublicFormPage() {
           type="button"
           onClick={saveAndFinishLater}
           disabled={savingDraft}
-          className="w-full rounded-md border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-600 hover:border-zinc-900 hover:text-zinc-900 disabled:opacity-50"
+          className="w-full rounded-full border border-zinc-200 px-3 py-2.5 text-xs font-semibold text-zinc-500 transition-colors hover:border-blue-400 hover:text-blue-600 disabled:opacity-50"
         >
           {savingDraft ? "Saving…" : "Save & finish later"}
         </button>
@@ -585,7 +618,7 @@ export default function PublicFormPage() {
         values={values}
         errors={errors}
         disabled={submitting}
-        accent={accent}
+        accent={ACCENT}
         onChange={(qid, v) => {
           setValues((s) => ({ ...s, [qid]: v }));
           setErrors((s) => {
@@ -597,118 +630,142 @@ export default function PublicFormPage() {
         }}
         onSubmit={submit}
         submitting={submitting}
-        footer={footer}
+        footer={saveAndResumeBlock}
       />
     );
   }
 
   // --- Classic mode -----------------------------------------------------------
 
+  const pct =
+    visibleQuestions.length === 0
+      ? 0
+      : Math.round((answeredCount / visibleQuestions.length) * 100);
+
   return (
-    <div className="min-h-screen pb-28 sm:pb-10">
-      {/* Sticky header with progress + timer */}
-      <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto max-w-md px-5 py-3">
+    <div className="brand-backdrop">
+      {/* Sticky progress + timer bar — translucent over the backdrop */}
+      <header className="sticky top-0 z-30 bg-white/10 backdrop-blur-md">
+        <div className="mx-auto max-w-md px-4 py-2.5">
           <div className="flex items-center justify-between gap-3">
-            <h1 className="min-w-0 truncate text-sm font-medium text-zinc-900">
+            <h1 className="min-w-0 truncate text-sm font-semibold text-white">
               {form.title}
             </h1>
-            {form.time_limit_minutes && (
-              <span
-                className={`shrink-0 rounded-md px-2.5 py-1 font-mono text-sm font-medium ${
-                  lowTime
-                    ? "bg-red-600 text-white"
-                    : "bg-zinc-100 text-zinc-900"
-                }`}
-                aria-live={lowTime ? "assertive" : undefined}
-              >
-                {remaining === null ? "—" : formatTime(remaining)}
+            <div className="flex shrink-0 items-center gap-2">
+              {form.time_limit_minutes && (
+                <span
+                  className={`rounded-full px-2.5 py-1 font-mono text-xs font-semibold ${
+                    lowTime ? "animate-pulse bg-red-500 text-white" : "bg-white/20 text-white"
+                  }`}
+                  aria-live={lowTime ? "assertive" : undefined}
+                >
+                  {remaining === null ? "—" : formatTime(remaining)}
+                </span>
+              )}
+              <span className="rounded-full bg-white/20 px-2.5 py-1 font-mono text-xs text-white">
+                {answeredCount}/{visibleQuestions.length}
               </span>
-            )}
-          </div>
-          {/* Progress */}
-          <div className="mt-2 flex items-center gap-2">
-            <div className="h-1 flex-1 overflow-hidden rounded-full bg-zinc-100">
-              <div
-                className="h-full rounded-full bg-zinc-900 transition-all"
-                style={{
-                  width:
-                    visibleQuestions.length === 0
-                      ? "0%"
-                      : `${Math.round((answeredCount / visibleQuestions.length) * 100)}%`,
-                }}
-              />
             </div>
-            <span className="font-mono text-xs text-zinc-400">
-              {answeredCount}/{visibleQuestions.length}
-            </span>
+          </div>
+          <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/20">
+            <div
+              className="h-full rounded-full bg-white transition-all duration-300"
+              style={{ width: `${pct}%` }}
+            />
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-md px-5 pt-4">
-        {form.description && (
-          <p className="mb-2 text-sm text-zinc-500">{form.description}</p>
-        )}
-        {resumedDraft && (
-          <div className="mb-2 rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-800" role="status">
-            Draft restored — your previous answers are loaded below.
-          </div>
-        )}
-        {submitError && (
-          <div className="mb-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-            {submitError}
-          </div>
-        )}
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            submit();
-          }}
-        >
-          {visibleQuestions.map((q, i) => (
-            <FieldRenderer
-              key={q.id}
-              question={q}
-              index={i}
-              value={values[q.id] ?? null}
-              error={errors[q.id] ?? null}
-              disabled={submitting}
-              onChange={(v) => {
-                setValues((s) => ({ ...s, [q.id]: v }));
-                // Clear the question's error as soon as the user interacts.
-                setErrors((s) => {
-                  if (!s[q.id]) return s;
-                  const next = { ...s };
-                  delete next[q.id];
-                  return next;
-                });
-              }}
-            />
-          ))}
-
-          {requiredMissing.length > 0 && (
-            <p className="text-xs text-zinc-400">
-              {requiredMissing.length} required question
-              {requiredMissing.length > 1 ? "s" : ""} left to answer
-            </p>
+      <main className="mx-auto max-w-md px-3 pb-32 pt-4 sm:pb-10">
+        <div className="card-in rounded-2xl bg-white p-4 shadow-xl shadow-blue-950/20 sm:p-6">
+          {form.description && (
+            <p className="mb-2 text-sm leading-relaxed text-zinc-500">{form.description}</p>
+          )}
+          {resumedDraft && (
+            <div className="mb-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800" role="status">
+              Draft restored — your previous answers are loaded below.
+            </div>
+          )}
+          {submitError && (
+            <div className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+              {submitError}
+            </div>
           )}
 
-          {/* Sticky-ish submit area */}
-          <div className="mt-6">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full rounded-lg bg-zinc-900 px-4 py-4 text-base font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
-            >
-              {submitting ? "Submitting…" : "Submit answers"}
-            </button>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              submit();
+            }}
+          >
+            {visibleQuestions.map((q, i) => (
+              <FieldRenderer
+                key={q.id}
+                question={q}
+                index={i}
+                value={values[q.id] ?? null}
+                error={errors[q.id] ?? null}
+                disabled={submitting}
+                onChange={(v) => {
+                  setValues((s) => ({ ...s, [q.id]: v }));
+                  // Clear the question's error as soon as the user interacts.
+                  setErrors((s) => {
+                    if (!s[q.id]) return s;
+                    const next = { ...s };
+                    delete next[q.id];
+                    return next;
+                  });
+                }}
+              />
+            ))}
 
-            {footer}
-          </div>
-        </form>
+            {requiredMissing.length > 0 && (
+              <p className="text-xs text-zinc-400">
+                {requiredMissing.length} required question
+                {requiredMissing.length > 1 ? "s" : ""} left to answer
+              </p>
+            )}
+
+            {/* Desktop submit (mobile uses the docked bar below) */}
+            <div className="mt-6 hidden sm:block">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full rounded-full bg-blue-600 px-4 py-3.5 text-base font-semibold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-700 active:scale-[0.99] disabled:opacity-50"
+              >
+                {submitting ? "Submitting…" : "Submit answers"}
+              </button>
+              {saveAndResumeBlock}
+            </div>
+          </form>
+        </div>
       </main>
+
+      {/* Mobile: docked submit bar — always in thumb reach */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-100 bg-white/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur sm:hidden">
+        <div className="mx-auto flex max-w-md items-center gap-2">
+          <button
+            type="submit"
+            disabled={submitting}
+            onClick={submit}
+            className="min-w-0 flex-1 rounded-full bg-blue-600 px-4 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/30 active:scale-[0.99] disabled:opacity-50"
+          >
+            {submitting ? "Submitting…" : "Submit answers"}
+          </button>
+          <button
+            type="button"
+            onClick={saveAndFinishLater}
+            disabled={savingDraft || !hasAnyAnswer}
+            aria-label="Save and finish later"
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-zinc-200 text-zinc-500 active:scale-95 disabled:opacity-40"
+          >
+            {savingDraft ? "…" : "⏸"}
+          </button>
+        </div>
+        {(submitError || savedLink) && (
+          <div className="mx-auto mt-2 max-w-md">{saveAndResumeBlock}</div>
+        )}
+      </div>
     </div>
   );
 }

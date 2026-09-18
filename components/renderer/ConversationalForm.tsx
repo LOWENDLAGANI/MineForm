@@ -137,22 +137,18 @@ export function ConversationalForm({
   const answeredCount = questions.filter(answeredOf).length;
 
   return (
-    <div
-      className="flex min-h-screen flex-col"
-      style={{ backgroundColor: "#ffffff" }}
-    >
+    <div className="brand-backdrop flex min-h-dvh flex-col">
       {/* Top progress */}
-      <header className="shrink-0 px-5 pt-5">
+      <header className="shrink-0 px-4 pt-4 sm:px-5 sm:pt-5">
         <div className="mx-auto flex w-full max-w-md items-center gap-2">
-          <span className="font-mono text-xs text-zinc-400">
+          <span className="font-mono text-xs font-medium text-white/80">
             {String(step + 1).padStart(2, "0")}/{String(total).padStart(2, "0")}
           </span>
-          <div className="h-1 flex-1 overflow-hidden rounded-full bg-zinc-100">
+          <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/25">
             <div
-              className="h-full rounded-full transition-all duration-300"
+              className="h-full rounded-full bg-white transition-all duration-300"
               style={{
                 width: `${total === 0 ? 0 : Math.round((answeredCount / total) * 100)}%`,
-                backgroundColor: accent,
               }}
             />
           </div>
@@ -162,17 +158,17 @@ export function ConversationalForm({
       {/* Question stage */}
       <div
         ref={scrollRef}
-        className="flex flex-1 items-center overflow-y-auto px-5 py-8"
+        className="flex flex-1 items-center overflow-y-auto px-3 py-6 sm:px-5 sm:py-8"
       >
         <div
-          className={`mx-auto w-full max-w-md transition-all ${animClass}`}
+          className={`mx-auto w-full max-w-md rounded-2xl bg-white p-5 shadow-xl shadow-blue-950/20 sm:p-8 transition-all ${animClass}`}
           style={{ transitionDuration: `${TRANSITION_MS}ms` }}
           aria-live="polite"
         >
           {/* Title/description only on the very first screen */}
           {isFirst && (
             <div className="mb-8">
-              <h1 className="text-2xl font-medium tracking-tight text-zinc-900">{title}</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">{title}</h1>
               {description && (
                 <p className="mt-2 text-sm leading-relaxed text-zinc-500">{description}</p>
               )}
@@ -186,15 +182,13 @@ export function ConversationalForm({
             error={errors[question.id] ?? null}
             disabled={disabled || phase === "out"}
             onChange={(v) => handleChange(question, v)}
-          />
-
-          <div className="mt-8 flex items-center gap-3">
+          />          <div className="mt-8 flex items-center gap-3">
             {!isFirst && (
               <button
                 type="button"
                 onClick={() => goTo(step - 1)}
                 disabled={phase === "out"}
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-zinc-300 text-zinc-500 hover:border-zinc-900 hover:text-zinc-900"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-zinc-200 text-zinc-500 transition-colors hover:border-blue-400 hover:text-blue-600"
                 aria-label="Previous question"
               >
                 ↑
@@ -205,8 +199,8 @@ export function ConversationalForm({
               onClick={() => (isLast ? onSubmit() : goTo(step + 1))}
               disabled={!canAdvance || phase === "out" || (isLast && submitting)}
               style={canAdvance ? { backgroundColor: accent } : undefined}
-              className={`h-11 min-w-32 rounded-full px-6 text-sm font-medium text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-40 ${
-                canAdvance ? "hover:opacity-90" : "bg-zinc-300"
+              className={`h-11 min-w-32 rounded-full px-6 text-sm font-semibold text-white shadow-sm transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 ${
+                canAdvance ? "shadow-blue-600/30 hover:brightness-110" : "bg-zinc-300"
               }`}
             >
               {isLast
@@ -222,7 +216,7 @@ export function ConversationalForm({
                 type="button"
                 onClick={() => goTo(step + 1)}
                 disabled={phase === "out"}
-                className="text-sm text-zinc-400 hover:text-zinc-900"
+                className="text-sm text-zinc-400 transition-colors hover:text-blue-600"
               >
                 Skip
               </button>
@@ -235,8 +229,8 @@ export function ConversationalForm({
         </div>
       </div>
 
-      {/* Question dots */}
-      <footer className="shrink-0 px-5 pb-6">
+      {/* Question dots + footer */}
+      <footer className="shrink-0 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-5">
         <div className="mx-auto flex w-full max-w-md items-center justify-center gap-1.5">
           {questions.map((q, i) => (
             <button
@@ -250,15 +244,19 @@ export function ConversationalForm({
                 width: i === step ? 20 : 8,
                 backgroundColor:
                   i === step
-                    ? accent
+                    ? "#ffffff"
                     : answeredOf(q)
-                      ? "#a1a1aa"
-                      : "#e4e4e7",
+                      ? "rgba(255,255,255,0.65)"
+                      : "rgba(255,255,255,0.3)",
               }}
             />
           ))}
         </div>
-        {footer && <div className="mx-auto mt-4 w-full max-w-md">{footer}</div>}
+        {footer && (
+          <div className="mx-auto mt-4 w-full max-w-md rounded-2xl bg-white/95 p-3 shadow-lg shadow-blue-950/10 backdrop-blur">
+            {footer}
+          </div>
+        )}
       </footer>
     </div>
   );

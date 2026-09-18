@@ -354,8 +354,8 @@ export default function FormBuilderPage() {
                       onClick={() => patchForm({ renderer_mode: opt.value })}
                       className={`rounded-md border px-2 py-2 text-left text-xs ${
                         form.renderer_mode === opt.value
-                          ? "border-zinc-900 bg-zinc-900 text-white"
-                          : "border-zinc-300 bg-white text-zinc-700 hover:border-zinc-900"
+                          ? "border-blue-600 bg-blue-600 text-white"
+                          : "border-zinc-300 bg-white text-zinc-700 hover:border-blue-400"
                       } disabled:opacity-50`}
                     >
                       <span className="block font-medium">{opt.label}</span>
@@ -413,10 +413,10 @@ export default function FormBuilderPage() {
                 type="button"
                 onClick={togglePublish}
                 disabled={saving}
-                className={`rounded-md border px-3 py-2 text-xs font-medium ${
+                className={`rounded-full border px-4 py-2 text-xs font-semibold shadow-sm transition-all active:scale-95 ${
                   form.is_published
-                    ? "border-zinc-900 bg-zinc-900 text-white"
-                    : "border-zinc-300 bg-white text-zinc-700 hover:border-zinc-900"
+                    ? "border-blue-600 bg-blue-600 text-white shadow-blue-600/30"
+                    : "border-zinc-300 bg-white text-zinc-700 hover:border-blue-500 hover:text-blue-600"
                 } disabled:opacity-50`}
               >
                 {form.is_published ? "Unpublish" : "Publish"}
@@ -469,7 +469,7 @@ export default function FormBuilderPage() {
                 <button
                   type="button"
                   onClick={addQuestion}
-                  className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-800"
+                  className="rounded-full bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-blue-600/30 hover:bg-blue-700"
                 >
                   Add question
                 </button>
@@ -484,7 +484,7 @@ export default function FormBuilderPage() {
                 <button
                   type="button"
                   onClick={addQuestion}
-                  className="mt-3 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+                  className="mt-3 rounded-full bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/30 hover:bg-blue-700"
                 >
                   Add your first question
                 </button>
@@ -522,15 +522,14 @@ export default function FormBuilderPage() {
         <div className="flex items-center gap-3">
           <span className="min-w-0 flex-1 truncate text-xs text-zinc-500">
             {error ?? status ?? (dirty ? "Unsaved changes" : "All changes saved")}
-          </span>
-          <button
-            type="button"
-            onClick={saveQuestions}
-            disabled={saving || !dirty}
-            className="shrink-0 rounded-md bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white disabled:opacity-40"
-          >
-            {saving ? "Saving…" : "Save"}
-          </button>
+          </span>            <button
+              type="button"
+              onClick={saveQuestions}
+              disabled={saving || !dirty}
+              className="shrink-0 rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/30 active:scale-[0.98] disabled:opacity-40"
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
         </div>
       </div>
 
@@ -540,7 +539,7 @@ export default function FormBuilderPage() {
           type="button"
           onClick={saveQuestions}
           disabled={saving || !dirty}
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-40"
+          className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-600/30 hover:bg-blue-700 disabled:opacity-40"
         >
           {saving ? "Saving…" : dirty ? "Save changes" : "Saved"}
         </button>

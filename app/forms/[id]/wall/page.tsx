@@ -231,9 +231,9 @@ export default function ResponseWallPage() {
               return (
                 <article
                   key={r.id}
-                  className={`rounded-xl border p-4 transition-all duration-500 ${
+                  className={`wall-pop rounded-xl border p-4 transition-all duration-500 ${
                     isNew
-                      ? "border-emerald-500 bg-emerald-950/40 scale-[1.02]"
+                      ? "border-emerald-400 bg-emerald-950/40 scale-[1.02] shadow-lg shadow-emerald-500/20"
                       : "border-zinc-800 bg-zinc-900"
                   }`}
                 >

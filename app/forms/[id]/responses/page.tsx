@@ -387,7 +387,7 @@ export default function ResponsesPage() {
             <button
               type="button"
               onClick={exportCsv}
-              className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-800"
+              className="rounded-full bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-blue-600/30 hover:bg-blue-700"
             >
               Export CSV
             </button>

@@ -139,7 +139,7 @@ export default function DashboardPage() {
           <button
             type="button"
             onClick={() => setCreating(!creating)}
-            className="rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 sm:px-3 sm:py-1.5 sm:text-xs"
+            className="rounded-full bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/30 transition-all hover:bg-blue-700 active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs"
           >
             {creating ? "Cancel" : "+ New form"}
           </button>
@@ -157,7 +157,7 @@ export default function DashboardPage() {
             />
             <button
               type="submit"
-              className="rounded-md bg-zinc-900 px-4 py-3 text-sm font-medium text-white hover:bg-zinc-800 sm:border sm:border-zinc-900 sm:bg-white sm:px-3 sm:py-1.5 sm:text-xs sm:text-zinc-900 sm:hover:bg-zinc-50"
+              className="rounded-full bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-blue-600/30 hover:bg-blue-700 sm:border sm:border-blue-600 sm:bg-white sm:px-3 sm:py-1.5 sm:text-xs sm:text-blue-600 sm:shadow-none sm:hover:bg-blue-50"
             >
               Create
             </button>
@@ -197,9 +197,9 @@ export default function DashboardPage() {
                       {f.title}
                     </Link>
                     <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${
                         f.is_published
-                          ? "bg-zinc-900 text-white"
+                          ? "bg-blue-600 text-white"
                           : "bg-zinc-100 text-zinc-500"
                       }`}
                     >
@@ -209,7 +209,7 @@ export default function DashboardPage() {
                   <div className="mt-3 flex items-center gap-2">
                     <Link
                       href={`/forms/${f.id}`}
-                      className="flex-1 rounded-md bg-zinc-900 px-3 py-2.5 text-center text-xs font-medium text-white"
+                      className="flex-1 rounded-full bg-blue-600 px-3 py-2.5 text-center text-xs font-semibold text-white shadow-sm shadow-blue-600/30"
                     >
                       Edit
                     </Link>

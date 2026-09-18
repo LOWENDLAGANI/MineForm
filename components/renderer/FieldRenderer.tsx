@@ -8,6 +8,9 @@
  *  - text-base inputs (16px+ prevents iOS focus zoom)
  *  - selected options invert with a visible border + check, not color only
  *  - error text below the field with aria wiring
+ *
+ * Visual language: light-blue filled inputs (#eff6ff) that turn white with a
+ * blue ring on focus, blue pill option rows — matches the brand backdrop.
  */
 
 import { useId } from "react";
@@ -24,12 +27,12 @@ export interface FieldRendererProps {
 }
 
 const inputBase =
-  "min-h-12 w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-3 text-base text-zinc-900 " +
-  "outline-none transition-colors placeholder:text-zinc-400 " +
-  "focus:border-zinc-900 focus:ring-1 focus:ring-inset focus:ring-zinc-900 " +
-  "disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-400";
+  "min-h-12 w-full rounded-lg border border-blue-100 bg-blue-50/60 px-3.5 py-3 text-base text-zinc-900 " +
+  "outline-none transition-all placeholder:text-blue-300 " +
+  "focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/30 " +
+  "disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400";
 
-const inputError = "border-red-600 focus:border-red-600 focus:ring-red-600";
+const inputError = "border-red-400 focus:border-red-500 focus:ring-red-500/25";
 
 export function FieldRenderer({
   question,
@@ -49,12 +52,12 @@ export function FieldRenderer({
       <div className="mb-2">
         <label htmlFor={id} className="block text-base font-medium text-zinc-900">
           {typeof index === "number" && (
-            <span className="mr-2 font-mono text-xs text-zinc-400">
+            <span className="mr-2 font-mono text-xs font-medium text-blue-500">
               {String(index + 1).padStart(2, "0")}
             </span>
           )}
           {question.question_text}
-          {question.is_required && <span className="ml-1 text-red-600">*</span>}
+          {question.is_required && <span className="ml-1 text-blue-600">*</span>}
         </label>
         {question.question_type === "rating" && rules.maxRating && (
           <p className="mt-0.5 text-xs text-zinc-400">Tap a number from 1 to {rules.maxRating}</p>
@@ -125,7 +128,7 @@ export function FieldRenderer({
           <div
             role="radiogroup"
             aria-labelledby={id}
-            className="space-y-2 divide-y divide-zinc-200 rounded-lg border border-zinc-300 sm:space-y-0"
+            className="space-y-2"
           >
             {question.options.map((opt) => {
               const selected = value === opt.id;
@@ -137,13 +140,15 @@ export function FieldRenderer({
                   aria-checked={selected}
                   disabled={disabled}
                   onClick={() => onChange(selected ? null : opt.id)}
-                  className={`flex min-h-12 w-full items-center gap-3 px-3.5 py-3 text-left text-base ${
-                    selected ? "bg-zinc-900 text-white" : "bg-white text-zinc-900"
+                  className={`flex min-h-12 w-full items-center gap-3 rounded-full border px-4 py-3 text-left text-base transition-all ${
+                    selected
+                      ? "border-blue-600 bg-blue-600 text-white shadow-sm shadow-blue-600/30"
+                      : "border-blue-100 bg-blue-50/60 text-zinc-900 hover:border-blue-300 hover:bg-blue-50"
                   }`}
                 >
                   <span
-                    className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${
-                      selected ? "border-white" : "border-zinc-400"
+                    className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 transition-colors ${
+                      selected ? "border-white" : "border-blue-300"
                     }`}
                   >
                     {selected && <span className="h-2 w-2 rounded-full bg-white" />}
@@ -161,7 +166,7 @@ export function FieldRenderer({
             This question has no options yet and can't be answered.
           </p>
         ) : (
-          <div className="space-y-2 divide-y divide-zinc-200 rounded-lg border border-zinc-300 sm:space-y-0">
+          <div className="space-y-2">
             {(question.options ?? []).map((opt) => {
               const arr = Array.isArray(value) ? value : [];
               const checked = arr.includes(opt.id);
@@ -187,13 +192,15 @@ export function FieldRenderer({
                     }
                     onChange(next.length === 0 ? null : next);
                   }}
-                  className={`flex min-h-12 w-full items-center gap-3 px-3.5 py-3 text-left text-base ${
-                    checked ? "bg-zinc-900 text-white" : "bg-white text-zinc-900"
+                  className={`flex min-h-12 w-full items-center gap-3 rounded-full border px-4 py-3 text-left text-base transition-all ${
+                    checked
+                      ? "border-blue-600 bg-blue-600 text-white shadow-sm shadow-blue-600/30"
+                      : "border-blue-100 bg-blue-50/60 text-zinc-900 hover:border-blue-300 hover:bg-blue-50"
                   }`}
                 >
                   <span
-                    className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border-2 ${
-                      checked ? "border-white" : "border-zinc-400"
+                    className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border-2 transition-colors ${
+                      checked ? "border-white" : "border-blue-300"
                     }`}
                   >
                     {checked && <span className="text-xs leading-none">✓</span>}
@@ -219,10 +226,10 @@ export function FieldRenderer({
                 aria-label={`${n} of ${rules.maxRating ?? 5}`}
                 disabled={disabled}
                 onClick={() => onChange(active ? null : n)}
-                className={`h-12 w-12 rounded-lg border text-base font-medium ${
+                className={`h-12 w-12 rounded-full border text-base font-medium transition-all active:scale-95 ${
                   active
-                    ? "border-zinc-900 bg-zinc-900 text-white"
-                    : "border-zinc-300 bg-white text-zinc-700 hover:border-zinc-900"
+                    ? "border-blue-600 bg-blue-600 text-white shadow-sm shadow-blue-600/30"
+                    : "border-blue-100 bg-blue-50/60 text-zinc-700 hover:border-blue-400"
                 }`}
               >
                 {n}
@@ -236,7 +243,7 @@ export function FieldRenderer({
           type="file"
           id={id}
           disabled={disabled}
-          className="block w-full rounded-lg border border-dashed border-zinc-300 bg-white px-3 py-3 text-sm text-zinc-600 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-xs file:text-white"
+          className="block w-full rounded-lg border border-dashed border-blue-200 bg-blue-50/60 px-3 py-3 text-sm text-zinc-600 file:mr-3 file:rounded-full file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-xs file:text-white"
         />
       )}
 
