@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HeaderBar } from "@/components/app/HeaderBar";
-import { PieChart, type PieSlice } from "@/components/app/PieChart";
+import { DistributionChart } from "@/components/app/DistributionChart";
 import { getBrowserSupabase, supabaseEnvMissing } from "@/lib/supabase-browser";
 import type { Question } from "@/lib/types";
 
@@ -292,9 +292,9 @@ export default function ResponsesPage() {
     );
   }, [responses, search]);
 
-  // Pie data: one chart per choice/dropdown/rating question
-  const pies = useMemo(() => {
-    const charts: { question: Question; slices: PieSlice[] }[] = [];
+  // Chart data: one distribution per choice/dropdown/rating question
+  const charts = useMemo(() => {
+    const out: { question: Question; slices: { label: string; count: number }[] }[] = [];
     for (const q of questions) {
       if (!["single_choice", "multi_choice", "dropdown", "rating"].includes(q.question_type)) {
         continue;
@@ -419,15 +419,18 @@ export default function ResponsesPage() {
         {funnel && <DropOffFunnel funnel={funnel} />}
 
         {/* Charts */}
-        {pies.length > 0 && (
+        {charts.length > 0 && (
           <section className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-            {pies.map(({ question, slices }) => (
+            {charts.map(({ question, slices }) => (
               <div key={question.id} className="border border-zinc-200">
                 <div className="border-b border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-900">
                   {question.question_text}
                 </div>
                 <div className="p-3">
-                  <PieChart slices={slices} />
+                  <DistributionChart
+                    slices={slices}
+                    storageKey={`mineform:chart:${formId}:${question.id}`}
+                  />
                 </div>
               </div>
             ))}
