@@ -408,11 +408,7 @@ export default function PublicFormPage() {
   if (submitted) {
     return (
       <div className="brand-backdrop">
-        <StateCard
-          icon="✓"
-          title="Response submitted"
-          body="Thanks — you can close this page now."
-        />
+        <StateCard icon="✓" title="Response submitted" />
       </div>
     );
   }
@@ -461,6 +457,10 @@ export default function PublicFormPage() {
             </div>
 
             <div className="px-6 py-6">
+              {form.description && (
+                <p className="text-sm leading-relaxed text-zinc-500">{form.description}</p>
+              )}
+
               <div className="mt-5 space-y-2.5">
                 <div className="flex items-center justify-between rounded-lg bg-blue-50/70 px-3.5 py-2.5 text-sm">
                   <span className="text-zinc-500">Questions</span>
@@ -510,12 +510,6 @@ export default function PublicFormPage() {
                   </div>
                 </div>
               )}
-
-              <p className="mt-4 text-xs leading-relaxed text-zinc-400">
-                {form.time_limit_minutes
-                  ? "⏱ The timer starts as soon as you tap the button below."
-                  : "Your progress is saved automatically on this device — you can finish later."}
-              </p>
 
               <button
                 type="button"
@@ -674,6 +668,9 @@ export default function PublicFormPage() {
 
       <main className="mx-auto max-w-md px-3 pb-32 pt-4 sm:pb-10">
         <div className="card-in rounded-2xl bg-white p-4 shadow-xl shadow-blue-950/20 sm:p-6">
+          {form.description && (
+            <p className="mb-2 text-sm leading-relaxed text-zinc-500">{form.description}</p>
+          )}
           {resumedDraft && (
             <div className="mb-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800" role="status">
               Draft restored — your previous answers are loaded below.
