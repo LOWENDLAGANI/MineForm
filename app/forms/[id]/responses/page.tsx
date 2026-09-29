@@ -314,9 +314,9 @@ export default function ResponsesPage() {
           counts.set(key, (counts.get(key) ?? 0) + 1);
         }
       }
-      charts.push({ question: q, slices: [...counts.entries()].map(([label, count]) => ({ label, count })) });
+      out.push({ question: q, slices: [...counts.entries()].map(([label, count]) => ({ label, count })) });
     }
-    return charts;
+    return out;
   }, [questions, responses, answerMap]);
 
   function exportCsv() {
