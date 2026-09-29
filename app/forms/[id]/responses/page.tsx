@@ -301,6 +301,15 @@ export default function ResponsesPage() {
       }
       const counts = new Map<string, number>();
       const labelFor = (id: string) => q.options.find((o) => o.id === id)?.label ?? id;
+      // Seed every defined option (and every rating step) at 0 so options
+      // nobody picked still show up as empty bars/slices instead of vanishing.
+      if (q.question_type === "rating") {
+        for (let n = 1; n <= (q.validation_rules.maxRating ?? 5); n++) {
+          counts.set(String(n), 0);
+        }
+      } else {
+        for (const o of q.options) counts.set(o.label, 0);
+      }
       for (const r of responses) {
         const v = answerMap.get(r.id)?.get(q.id);
         if (!v) continue;

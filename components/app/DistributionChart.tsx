@@ -86,8 +86,9 @@ function Detail({
       <div className="min-w-0">
         <p className="truncate text-xs font-medium text-zinc-900">{slice.label}</p>
         <p className="font-mono text-[11px] text-zinc-500">
-          {slice.count} {slice.count === 1 ? "person" : "people"} chose this ·{" "}
-          {pct.toFixed(1)}% of {total} answers
+          {slice.count === 0
+            ? "Nobody chose this option"
+            : `${slice.count} ${slice.count === 1 ? "person" : "people"} chose this · ${pct.toFixed(1)}% of ${total} answers`}
         </p>
       </div>
       <span className="shrink-0 font-mono text-lg font-semibold text-zinc-900">
@@ -165,11 +166,15 @@ function DonutSvg({
   const inner = radius * hole;
 
   let angle = -Math.PI / 2;
+  // A single option at 100% would fill the whole circle and read as a blank
+  // disc — inset it slightly so it still looks like a chart slice.
+  const single = data.length === 1;
+  const GAP = single ? 0.06 : 0;
   const arcs = data.map((s, i) => {
     const frac = s.count / total;
-    const a0 = angle;
-    const a1 = angle + frac * Math.PI * 2;
-    angle = a1;
+    const a0 = angle + GAP / 2;
+    const a1 = angle + frac * Math.PI * 2 - GAP / 2;
+    angle += frac * Math.PI * 2;
 
     const large = frac > 0.5 ? 1 : 0;
     const x0 = cx + radius * Math.cos(a0);
@@ -425,8 +430,18 @@ export function DistributionChart({
     setSelected((cur) => (cur === label ? null : label));
   }
 
-  const data = slices.filter((s) => s.count > 0).sort((a, b) => b.count - a.count);
-  const total = data.reduce((sum, s) => sum + s.count, 0);
+  const answered = slices.filter((s) => s.count > 0);
+  const total = answered.reduce((sum, s) => sum + s.count, 0);
+
+  // Keep zero-answer options visible: they should read as "nobody chose this",
+  // not disappear. Rating scales stay in numeric order; everything else is
+  // largest-first with the empty options at the bottom.
+  const allNumeric = slices.every((s) => /^\d+(\.\d+)?$/.test(s.label));
+  const data = [...slices].sort((a, b) =>
+    allNumeric
+      ? Number(a.label) - Number(b.label)
+      : b.count - a.count || a.label.localeCompare(b.label),
+  );
   const selectedSlice = data.find((s) => s.label === selected) ?? null;
 
   return (
