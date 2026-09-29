@@ -165,13 +165,10 @@ export function ConversationalForm({
           style={{ transitionDuration: `${TRANSITION_MS}ms` }}
           aria-live="polite"
         >
-          {/* Title/description only on the very first screen */}
+          {/* Title only on the very first screen */}
           {isFirst && (
             <div className="mb-8">
               <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">{title}</h1>
-              {description && (
-                <p className="mt-2 text-sm leading-relaxed text-zinc-500">{description}</p>
-              )}
             </div>
           )}
 

@@ -461,10 +461,6 @@ export default function PublicFormPage() {
             </div>
 
             <div className="px-6 py-6">
-              {form.description && (
-                <p className="text-sm leading-relaxed text-zinc-500">{form.description}</p>
-              )}
-
               <div className="mt-5 space-y-2.5">
                 <div className="flex items-center justify-between rounded-lg bg-blue-50/70 px-3.5 py-2.5 text-sm">
                   <span className="text-zinc-500">Questions</span>
@@ -601,7 +597,7 @@ export default function PublicFormPage() {
           disabled={savingDraft}
           className="w-full rounded-full border border-zinc-200 px-3 py-2.5 text-xs font-semibold text-zinc-500 transition-colors hover:border-blue-400 hover:text-blue-600 disabled:opacity-50"
         >
-          {savingDraft ? "Saving…" : "Save & finish later"}
+          {savingDraft ? "Saving…" : "Jawap lain Kali"}
         </button>
       )}
     </div>
@@ -678,9 +674,6 @@ export default function PublicFormPage() {
 
       <main className="mx-auto max-w-md px-3 pb-32 pt-4 sm:pb-10">
         <div className="card-in rounded-2xl bg-white p-4 shadow-xl shadow-blue-950/20 sm:p-6">
-          {form.description && (
-            <p className="mb-2 text-sm leading-relaxed text-zinc-500">{form.description}</p>
-          )}
           {resumedDraft && (
             <div className="mb-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800" role="status">
               Draft restored — your previous answers are loaded below.
@@ -756,7 +749,7 @@ export default function PublicFormPage() {
             type="button"
             onClick={saveAndFinishLater}
             disabled={savingDraft || !hasAnyAnswer}
-            aria-label="Save and finish later"
+            aria-label="Jawap lain Kali"
             className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-zinc-200 text-zinc-500 active:scale-95 disabled:opacity-40"
           >
             {savingDraft ? "…" : "⏸"}
