@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import SplashScreen from "@/components/app/SplashScreen";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,7 +20,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-white text-zinc-900 antialiased">{children}</body>
+      <body className="bg-white text-zinc-900 antialiased">
+        {children}
+        <SplashScreen />
+      </body>
     </html>
   );
 }
