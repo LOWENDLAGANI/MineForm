@@ -133,7 +133,6 @@ export default function ResponsesPage() {
   const [responses, setResponses] = useState<ResponseRow[]>([]);
   const [statusFilter, setStatusFilter] = useState<"all" | "submitted" | "abandoned">("submitted");
   const [search, setSearch] = useState("");
-  const [liveNotice, setLiveNotice] = useState(false);
   const [funnel, setFunnel] = useState<FunnelData | null>(null);
 
   const authedFetch = useCallback(
@@ -199,81 +198,6 @@ export default function ResponsesPage() {
   useEffect(() => {
     load();
   }, [load]);
-
-  // --- Supabase Realtime: live updates for table + pie charts ------------
-  // Subscribes to INSERTs on `responses` (new submissions) and `answers`
-  // (rows arriving just before a submission is sealed). RLS filters what we
-  // receive — only this form's rows reach this channel. New payloads trigger
-  // a debounced quiet refetch so counts, rows and pies stay consistent.
-  const quietRefetch = useCallback(async () => {
-    try {
-      const q = statusFilter === "all" ? "" : `&status=${statusFilter}`;
-      const data = await authedFetch(`/api/forms/${formId}/responses?limit=200${q}`);
-      setResponses(
-        (data.responses as ResponseRow[]).filter((r) => r.submitted_at !== null),
-      );
-    } catch {
-      // transient — next realtime event retries
-    }
-  }, [authedFetch, formId, statusFilter]);
-
-  useEffect(() => {
-    const supabase = getBrowserSupabase();
-    if (!supabase) return;
-
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const scheduleRefetch = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        timer = null;
-        quietRefetch();
-      }, 600); // debounce bursts (answers + response arrive together)
-    };
-
-    const channel = supabase
-      .channel(`form-responses-${formId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "responses",
-          filter: `form_id=eq.${formId}`,
-        },
-        (payload) => {
-          if (payload.new.submitted_at) {
-            setLiveNotice(true);
-            scheduleRefetch();
-          }
-          // Unsubmitted rows (someone started) are ignored.
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "answers",
-        },
-        // answers arrive ~instantly before the response is sealed; the
-        // responses INSERT event will also fire, but this catches answers
-        // for responses sealed by other paths (e.g. payment webhook).
-        () => scheduleRefetch(),
-      )
-      .subscribe();
-
-    return () => {
-      if (timer) clearTimeout(timer);
-      supabase.removeChannel(channel);
-    };
-  }, [formId, quietRefetch]);
-
-  // Auto-hide the live notice after a moment
-  useEffect(() => {
-    if (!liveNotice) return;
-    const t = setTimeout(() => setLiveNotice(false), 4000);
-    return () => clearTimeout(t);
-  }, [liveNotice]);
 
   // Answers keyed by response id for fast cell lookup
   const answerMap = useMemo(() => {
@@ -406,16 +330,7 @@ export default function ResponsesPage() {
         {error && <p className="mt-4 text-xs text-red-600">{error}</p>}
         {loading && <p className="mt-6 text-xs text-zinc-400">Loading…</p>}
 
-        {/* Live indicator */}
-        <div className="mt-3 flex items-center gap-2 text-xs" aria-live="polite">
-          <span
-            className={`h-2 w-2 rounded-full ${
-              liveNotice ? "bg-emerald-500" : "bg-zinc-300"
-            }`}
-          />
-          <span className={liveNotice ? "text-emerald-700" : "text-zinc-400"}>
-            {liveNotice ? "New response just came in" : "Live — updates in real time"}
-          </span>
+        <div className="mt-3 flex items-center gap-2 text-xs">
           <Link
             href={`/forms/${formId}/wall`}
             className="ml-auto rounded-md border border-zinc-300 px-2 py-1 font-medium text-zinc-600 hover:border-zinc-900 hover:text-zinc-900"

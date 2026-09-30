@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Response wall — full-screen owner mode showing submissions live.
+ * Response wall — full-screen owner mode showing submissions.
  * Powered by Supabase Realtime (postgres_changes on responses/answers, RLS
  * filters to this owner). Built for projectors at events/classrooms: giant
  * counter, animated incoming cards, no chrome. Press F for true fullscreen.
@@ -196,8 +196,7 @@ export default function ResponseWallPage() {
             <span className="text-6xl font-semibold tabular-nums tracking-tight sm:text-7xl">
               {submitted.length}
             </span>
-            <span className="text-sm text-zinc-400">responses · live</span>
-            <span className="h-3 w-3 animate-pulse rounded-full bg-emerald-500" />
+            <span className="text-sm text-zinc-400">responses</span>
           </div>
           <button
             type="button"
