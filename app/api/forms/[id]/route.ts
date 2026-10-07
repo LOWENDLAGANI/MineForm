@@ -3,13 +3,9 @@ import { z } from "zod";
 import { assertUuid, handleError, parseBody, rateLimit } from "@/lib/api";
 import { createServiceClient } from "@/lib/supabase";
 import { apiError } from "@/lib/types";
-import {
-  CloseConfigSchema,
-  LogicRuleSchema,
-  OptionSchema,
-  ThemeConfigSchema,
-  ValidationRulesSchema,
-} from "@/lib/types";
+import { QuestionInputSchema, FormFeatureFieldsSchema } from "@/lib/form-payload";
+import { requireFormAccess } from "@/lib/form-access";
+import { logAudit } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -26,56 +22,11 @@ async function requireUser(req: NextRequest) {
   return { supabase, user: data.user };
 }
 
-/**
- * Loads a form row and verifies the CALLER owns it.
- * The service-role client bypasses RLS, so this comparison is the only thing
- * standing between any signed-in user and someone else's form. Missing and
- * not-owned both return 404 — no existence oracle.
- */
-async function requireOwnedForm(
-  supabase: ReturnType<typeof createServiceClient>,
-  id: string,
-  userId: string,
-) {
-  const { data: existing, error } = await supabase
-    .from("forms")
-    .select("id, user_id")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (error) throw error;
-  if (!existing || existing.user_id !== userId) {
-    throw apiError("NOT_FOUND", "Form not found", 404);
-  }
-  return existing;
-}
-
 /* ---------------------------------------------------------------------------
- * PATCH /api/forms/[id] — partial update, owner scope
+ * PATCH /api/forms/[id] — partial update (owner or editor)
  * ------------------------------------------------------------------------- */
-const QuestionPatchSchema = z.object({
-  id: z.string().uuid(),
-  question_text: z.string().min(1).max(5000),
-  question_type: z.enum([
-    "short_text",
-    "long_text",
-    "single_choice",
-    "multi_choice",
-    "dropdown",
-    "rating",
-    "date",
-    "number",
-    "email",
-    "file_upload",
-  ]),
-  options: z.array(OptionSchema).default([]),
-  validation_rules: ValidationRulesSchema.default({}),
-  logic_rules: z.array(LogicRuleSchema).default([]),
-  is_required: z.boolean().default(false),
-});
-
-const PatchSchema = z
-  .object({
+const PatchSchema = FormFeatureFieldsSchema
+  .extend({
     title: z.string().min(1).max(300).optional(),
     description: z.string().max(5000).nullable().optional(),
     slug: z
@@ -84,20 +35,11 @@ const PatchSchema = z
       .max(80)
       .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
       .optional(),
-    time_limit_minutes: z.number().int().positive().nullable().optional(),
-    response_cap: z.number().int().positive().nullable().optional(),
-    renderer_mode: z.enum(["classic", "conversational"]).optional(),
-    send_confirmation_email: z.boolean().optional(),
-    close_config: CloseConfigSchema.optional(),
-    // Accents end up in inline styles — validate known fields, tolerate
-    // unknown keys so older stored themes still round-trip.
-    theme_config: ThemeConfigSchema.partial().passthrough().optional(),
-    payment_config: z.record(z.unknown()).optional(),
     is_published: z.boolean().optional(),
     /** Full ordered question set — replaces whatever is stored. */
-    questions: z.array(QuestionPatchSchema).optional(),
+    questions: z.array(QuestionInputSchema.extend({ id: z.string().uuid() })).optional(),
   })
-  .strict();
+  .partial();
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
@@ -107,17 +49,16 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     rateLimit(req, "owner:write", 120);
 
     const { supabase, user } = await requireUser(req);
+    const role = await requireFormAccess(supabase, id, user.id, "editor");
 
     const body = await parseBody(req, PatchSchema);
     if (Object.keys(body).length === 0) {
       throw apiError("VALIDATION_ERROR", "Empty patch", 400);
     }
 
-    await requireOwnedForm(supabase, id, user.id);
-
     // Questions: upsert the full ordered set (stable ids keep existing
     // answer rows intact), then remove any questions the builder dropped.
-    // SECURITY: the client supplies question ids. A malicious owner could
+    // SECURITY: the client supplies question ids. A malicious editor could
     // submit a UUID belonging to ANOTHER user's form — the service-role
     // upsert would happily overwrite that foreign row (RLS is bypassed
     // server-side). So: load this form's existing ids, and re-issue brand-new
@@ -138,6 +79,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         options: q.options,
         validation_rules: q.validation_rules,
         logic_rules: q.logic_rules,
+        translations: q.translations,
+        shuffle_options: q.shuffle_options,
         is_required: q.is_required,
         order_index: i,
       }));
@@ -164,17 +107,19 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     const { questions: _questions, ...formPatch } = body;
     const hasFormFields = Object.keys(formPatch).length > 0;
 
-    let updated = null;
     if (hasFormFields) {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("forms")
         .update(formPatch)
-        .eq("id", id)
-        .select("*")
-        .single();
-
+        .eq("id", id);
       if (error) throw error;
-      updated = data;
+
+      await logAudit(supabase, {
+        form_id: id,
+        actor: user.email ?? user.id,
+        action: body.is_published !== undefined ? (body.is_published ? "form.published" : "form.unpublished") : "form.settings_updated",
+        detail: { fields: Object.keys(formPatch), by: role },
+      });
     }
 
     // Return the canonical state: form row + ordered questions.
@@ -192,7 +137,6 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
     if (qErr) throw qErr;
 
-    void updated;
     return NextResponse.json({ form: formRow, questions: questionRows ?? [] });
   } catch (err) {
     return handleError(err);
@@ -200,7 +144,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 }
 
 /* ---------------------------------------------------------------------------
- * GET /api/forms/[id] — owner-scoped read (form + questions, drafts included)
+ * GET /api/forms/[id] — read (owner, editor or viewer)
  * ------------------------------------------------------------------------- */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
@@ -210,7 +154,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     rateLimit(req, "owner:read", 120);
 
     const { supabase, user } = await requireUser(req);
-    await requireOwnedForm(supabase, id, user.id);
+    const role = await requireFormAccess(supabase, id, user.id, "viewer");
 
     const { data: form, error } = await supabase
       .from("forms")
@@ -228,14 +172,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
     if (qErr) throw qErr;
 
-    return NextResponse.json({ form, questions: questionRows ?? [] });
+    return NextResponse.json({ form, questions: questionRows ?? [], role });
   } catch (err) {
     return handleError(err);
   }
 }
 
 /* ---------------------------------------------------------------------------
- * DELETE /api/forms/[id] — cascade deletes questions/responses/answers
+ * DELETE /api/forms/[id] — owner only; cascades questions/responses/answers
  * ------------------------------------------------------------------------- */
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   try {
@@ -245,7 +189,9 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
     rateLimit(req, "owner:delete", 20);
 
     const { supabase, user } = await requireUser(req);
-    await requireOwnedForm(supabase, id, user.id);
+
+    const { data: form } = await supabase.from("forms").select("user_id, title").eq("id", id).single();
+    if (!form || form.user_id !== user.id) throw apiError("NOT_FOUND", "Form not found", 404);
 
     const { error } = await supabase.from("forms").delete().eq("id", id);
     if (error) throw error;

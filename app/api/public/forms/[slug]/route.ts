@@ -3,6 +3,7 @@ import { handleError } from "@/lib/api";
 import { createServiceClient } from "@/lib/supabase";
 import { QuestionSchema, type Question } from "@/lib/types";
 import type { Database } from "@/lib/db-types";
+import { hasPassword, isLinkExpired } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,8 @@ type QuestionRow = Database["public"]["Tables"]["questions"]["Row"];
  * Returns the renderable form definition for a published form, plus live
  * availability so the client can decide what to show before rendering.
  * No auth. Unpublished or unknown slugs return an identical 404 (no probing).
+ * Secrets never leave the server: the password is reported as a boolean, the
+ * hash is not included.
  */
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   try {
@@ -60,12 +63,14 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ slug: stri
     const capped =
       form.response_cap !== null && submittedCount >= (form.response_cap ?? 0);
 
-    // Close conditions: date is evaluated here; conditional close needs the
-    // answers tables, so the client only gets the date part up front — the
-    // authoritative check still happens server-side on start/submit.
     const closeCfg = (form.close_config ?? {}) as { close_at?: string | null };
     const closedByDate =
       closeCfg.close_at != null && Date.now() > new Date(closeCfg.close_at).getTime();
+
+    const settings = (form.settings ?? {}) as Record<string, unknown>;
+    const design = (form.design_config ?? {}) as Record<string, unknown>;
+    const scoring = (form.scoring_config ?? {}) as Record<string, unknown>;
+    const access = (form.access_config ?? {}) as Record<string, unknown>;
 
     return NextResponse.json({
       form: {
@@ -76,11 +81,22 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ slug: stri
         response_cap: form.response_cap,
         renderer_mode: form.renderer_mode,
         theme_config: form.theme_config,
+        settings,
+        design_config: design,
+        scoring_config: scoring,
         payment_config: form.payment_config,
         submitted_count: submittedCount,
         is_capped: capped,
         is_closed: closedByDate,
         close_at: closeCfg.close_at ?? null,
+        // Access gates — booleans only, no secrets:
+        has_password: hasPassword(form.access_config as Record<string, unknown> | null),
+        is_link_expired: isLinkExpired(form.access_config as Record<string, unknown> | null),
+        unique_email: settings.unique_email === true,
+        locales: Array.isArray(settings.locales) ? settings.locales : [],
+        hidden_fields: Array.isArray(settings.hidden_fields) ? settings.hidden_fields : [],
+        scoring_enabled: scoring.enabled === true,
+        progress_bar: settings.progress_bar !== false,
       },
       questions,
     });

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HeaderBar } from "@/components/app/HeaderBar";
 import { DistributionChart } from "@/components/app/DistributionChart";
+import { StatsSection } from "@/components/analytics/StatsSection";
 import { getBrowserSupabase, supabaseEnvMissing } from "@/lib/supabase-browser";
 import type { Question } from "@/lib/types";
 
@@ -70,6 +71,7 @@ export default function ResponsesPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "submitted" | "abandoned">("submitted");
   const [search, setSearch] = useState("");
   const [funnel, setFunnel] = useState<FunnelData | null>(null);
+  const [stats, setStats] = useState<Record<string, unknown> | null>(null);
 
   const authedFetch = useCallback(async (path: string) => {
     const supabase = getBrowserSupabase();
@@ -102,6 +104,10 @@ export default function ResponsesPage() {
         const f = await authedFetch(`/api/forms/${formId}/funnel`);
         setFunnel(f.funnel ?? null);
       } catch { setFunnel(null); }
+      try {
+        const st = await authedFetch(`/api/forms/${formId}/stats`);
+        setStats(st.stats ?? null);
+      } catch { setStats(null); }
     } catch (e) { setError(e instanceof Error ? e.message : "Failed to load responses"); }
     finally { setLoading(false); }
   }, [authedFetch, formId, statusFilter]);
@@ -147,6 +153,20 @@ export default function ResponsesPage() {
     URL.revokeObjectURL(url);
   }
 
+  function exportJson() {
+    const payload = filtered.map((r) => ({
+      id: r.id,
+      started_at: r.started_at,
+      submitted_at: r.submitted_at,
+      answers: Object.fromEntries(questions.map((q) => [q.question_text, cellValue(answerMap.get(r.id)?.get(q.id))])),
+    }));
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `responses-${formId}.json`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (supabaseEnvMissing) return (
     <div className="min-h-screen bg-white"><HeaderBar /><main className="mx-auto max-w-5xl px-6 py-8 text-sm text-red-600">Supabase not configured.</main></div>
   );
@@ -168,7 +188,9 @@ export default function ResponsesPage() {
               <option value="all">All</option>
             </select>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search…" className={input} />
+            <button type="button" onClick={exportJson} className="rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-zinc-900">Export JSON</button>
             <button type="button" onClick={exportCsv} className="rounded-full bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-blue-600/30 hover:bg-blue-700">Export CSV</button>
+            <button type="button" onClick={() => window.print()} className="hidden rounded-full border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:border-zinc-900 sm:block">Print</button>
           </div>
         </div>
         {error && <p className="mt-4 text-xs text-red-600">{error}</p>}
@@ -177,6 +199,7 @@ export default function ResponsesPage() {
           <Link href={`/forms/${formId}/wall`} className="ml-auto rounded-md border border-zinc-300 px-2 py-1 font-medium text-zinc-600 hover:border-zinc-900 hover:text-zinc-900">Response wall ↗</Link>
         </div>
         {funnel && <DropOffFunnel funnel={funnel} />}
+        {stats && <StatsSection stats={stats as never} formId={formId} />}
         {charts.length > 0 && (
           <section className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
             {charts.map(({ question, slices }) => (

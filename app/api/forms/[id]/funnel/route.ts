@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { assertUuid, handleError, rateLimit } from "@/lib/api";
 import { createServiceClient } from "@/lib/supabase";
 import { apiError } from "@/lib/types";
+import { requireFormAccess } from "@/lib/form-access";
 
 export const dynamic = "force-dynamic";
 
@@ -41,15 +42,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       throw apiError("UNAUTHORIZED", "Invalid session", 401);
     }
 
-    const { data: form } = await supabase
-      .from("forms")
-      .select("user_id, title")
-      .eq("id", id)
-      .single();
-    if (!form) throw apiError("NOT_FOUND", "Form not found", 404);
-    if (form.user_id !== userData.user.id) {
-      throw apiError("UNAUTHORIZED", "Not the form owner", 403);
-    }
+    await requireFormAccess(supabase, id, userData.user.id, "viewer");
 
     const { data: questionRows, error: qErr } = await supabase
       .from("questions")

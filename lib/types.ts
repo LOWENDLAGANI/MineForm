@@ -46,9 +46,6 @@ export type ValidationRules = z.infer<typeof ValidationRulesSchema>;
 
 /* ---------------------------------------------------------------------------
  * Conditional logic (stored in questions.logic_rules JSONB)
- *
- * A rule says: IF <conditions> THEN show/skip/require this question.
- * All conditions in one rule AND together; multiple rules OR together.
  * ------------------------------------------------------------------------- */
 export const LogicConditionSchema = z
   .object({
@@ -90,10 +87,23 @@ export const OptionSchema = z
     label: z.string().min(1),
     /** Marks the choice that terminates the form (e.g. "None of the above"). */
     isExclusive: z.boolean().optional(),
+    /** Quiz score awarded when this option is picked (scoring mode). */
+    points: z.number().optional(),
   })
   .strict();
 
 export type Option = z.infer<typeof OptionSchema>;
+
+/** Per-locale override for a question (i18n): { [locale]: { text, options } } */
+export const TranslationSchema = z
+  .object({
+    text: z.string().min(1).max(5000).optional(),
+    /** Option id -> translated label. */
+    options: z.record(z.string(), z.string().max(500)).optional(),
+  })
+  .strict();
+
+export type Translation = z.infer<typeof TranslationSchema>;
 
 /* ---------------------------------------------------------------------------
  * Question + Form
@@ -109,6 +119,10 @@ export const QuestionSchema = z
     logic_rules: z.array(LogicRuleSchema).default([]),
     is_required: z.boolean().default(false),
     order_index: z.number().int().min(0),
+    /** Per-locale translated text/option labels. */
+    translations: z.record(TranslationSchema).default({}),
+    /** Randomize this question's option order per respondent. */
+    shuffle_options: z.boolean().default(false),
   })
   .strict();
 
@@ -127,6 +141,143 @@ export const ThemeConfigSchema = z
   .strict();
 
 export type ThemeConfig = z.infer<typeof ThemeConfigSchema>;
+
+/* ---------------------------------------------------------------------------
+ * Form settings (stored in forms.settings JSONB)
+ * ------------------------------------------------------------------------- */
+export const FormSettingsSchema = z
+  .object({
+    /** Shuffle visible question order per respondent. */
+    shuffle_questions: z.boolean().default(false),
+    /** Show the answered/total progress bar. */
+    progress_bar: z.boolean().default(true),
+    /** Hidden URL params captured with each response (UTM etc). */
+    hidden_fields: z.array(z.string().min(1).max(60).regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/)).max(20).default([]),
+    /** One response per verified email. */
+    unique_email: z.boolean().default(false),
+    /** Allow browser autofill hints on name/email fields. */
+    autocomplete: z.boolean().default(true),
+    /** Answer locales offered to respondents (first = default). */
+    locales: z.array(z.string().min(2).max(8)).max(10).default([]),
+  })
+  .strict();
+
+export type FormSettings = z.infer<typeof FormSettingsSchema>;
+
+/* ---------------------------------------------------------------------------
+ * Scoring / quiz mode (stored in forms.scoring_config JSONB)
+ * ------------------------------------------------------------------------- */
+export const ScoringConfigSchema = z
+  .object({
+    enabled: z.boolean().default(false),
+    /** Show the computed score on the ending screen. */
+    show_score: z.boolean().default(true),
+  })
+  .strict();
+
+export type ScoringConfig = z.infer<typeof ScoringConfigSchema>;
+
+/* ---------------------------------------------------------------------------
+ * Custom ending screens (stored in forms.ending_config JSONB)
+ * ------------------------------------------------------------------------- */
+export const EndingConditionSchema = z
+  .object({
+    question_id: z.string().uuid(),
+    operator: z.enum(["eq", "contains"]),
+    value: z.string().min(1).max(500),
+  })
+  .strict();
+
+export const EndingSchema = z
+  .object({
+    id: z.string().min(1).max(80),
+    name: z.string().min(1).max(120),
+    /** First ending whose conditions all match wins. */
+    conditions: z.array(EndingConditionSchema).max(10).default([]),
+    message: z.string().min(1).max(2000),
+  })
+  .strict();
+
+export const EndingConfigSchema = z
+  .object({
+    default_message: z.string().max(2000).default("Thanks for your response!"),
+    endings: z.array(EndingSchema).max(20).default([]),
+  })
+  .strict();
+
+export type EndingConfig = z.infer<typeof EndingConfigSchema>;
+export type Ending = z.infer<typeof EndingSchema>;
+
+/* ---------------------------------------------------------------------------
+ * Design (stored in forms.design_config JSONB)
+ * ------------------------------------------------------------------------- */
+export const FONTS = [
+  "inter",
+  "system",
+  "poppins",
+  "playfair",
+  "lora",
+  "space-grotesk",
+  "roboto-mono",
+  "source-sans",
+  "dm-sans",
+  "caveat",
+] as const;
+
+export const DesignConfigSchema = z
+  .object({
+    /** Logo shown at the top of the public form. */
+    logo_url: z.string().url().max(1000).nullable().default(null),
+    /** Background image behind the form card. */
+    background_url: z.string().url().max(1000).nullable().default(null),
+    /** 0–90: dark overlay opacity over the background image. */
+    overlay_opacity: z.number().int().min(0).max(90).default(40),
+    /** Dark mode for respondents: auto follows their device. */
+    dark_mode: z.enum(["off", "on", "auto"]).default("off"),
+    heading_font: z.enum(FONTS).default("inter"),
+    body_font: z.enum(FONTS).default("inter"),
+  })
+  .strict();
+
+export type DesignConfig = z.infer<typeof DesignConfigSchema>;
+
+/* ---------------------------------------------------------------------------
+ * Integrations (stored in forms.integrations JSONB)
+ * ------------------------------------------------------------------------- */
+export const IntegrationsSchema = z
+  .object({
+    /** Email the form owner on every new response. */
+    notify_email: z.boolean().default(false),
+    /** Generic outgoing webhook — POSTs the sealed response JSON. */
+    webhook_url: z.string().url().max(1000).nullable().default(null),
+    /** Slack/Discord incoming webhook — posts a one-line summary. */
+    slack_webhook_url: z.string().url().max(1000).nullable().default(null),
+    /** Google Sheets sync via an Apps Script webhook (free, no OAuth). */
+    sheet_webhook_url: z.string().url().max(1000).nullable().default(null),
+    /** Weekly email digest of the last 7 days of responses. */
+    weekly_report: z.boolean().default(false),
+  })
+  .strict();
+
+export type Integrations = z.infer<typeof IntegrationsSchema>;
+
+/* ---------------------------------------------------------------------------
+ * Access control (stored in forms.access_config JSONB)
+ * ------------------------------------------------------------------------- */
+export const AccessConfigSchema = z
+  .object({
+    /** SHA-256 hex of the form password (empty = no password). */
+    password_hash: z.string().max(64).nullable().default(null),
+    /** The public link stops working after this ISO timestamp. */
+    link_expires_at: z.string().nullable().default(null),
+    /** ISO-3166 alpha-2 country allowlist (empty = every country). */
+    allowed_countries: z.array(z.string().length(2)).max(100).default([]),
+    /** Device allowlist (empty = all devices). */
+    allowed_devices: z.array(z.enum(["mobile", "desktop"])).max(2).default([]),
+  })
+  .strict();
+
+export type AccessConfig = z.infer<typeof AccessConfigSchema>;
 
 /* ---------------------------------------------------------------------------
  * Close conditions (stored in forms.close_config JSONB)
@@ -167,6 +318,12 @@ export const FormSchema = z
     send_confirmation_email: z.boolean().default(false),
     close_config: CloseConfigSchema.default({ conditions: [] }),
     theme_config: ThemeConfigSchema,
+    settings: FormSettingsSchema.default({}),
+    scoring_config: ScoringConfigSchema.default({}),
+    ending_config: EndingConfigSchema.default({}),
+    design_config: DesignConfigSchema.default({}),
+    integrations: IntegrationsSchema.default({}),
+    access_config: AccessConfigSchema.default({}),
     payment_config: z.record(z.unknown()).default({}).optional(),
     is_published: z.boolean(),
     created_at: z.string(),
@@ -213,6 +370,12 @@ export type ApiErrorCode =
   | "VALIDATION_ERROR"
   | "RATE_LIMITED"
   | "DRAFT_NOT_FOUND"
+  | "FORBIDDEN_COUNTRY"
+  | "FORBIDDEN_DEVICE"
+  | "PASSWORD_REQUIRED"
+  | "EMAIL_VERIFICATION_REQUIRED"
+  | "DUPLICATE_EMAIL"
+  | "LINK_EXPIRED"
   | "INTERNAL";
 
 export interface ApiError {

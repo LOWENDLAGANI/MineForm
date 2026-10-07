@@ -44,6 +44,7 @@ export interface QuestionRowProps {
   onChange: (patch: Partial<Question>) => void;
   /** Move the question up/down in order. */
   onMove: (dir: -1 | 1) => void;
+  onDuplicate: () => void;
   onDelete: () => void;
 }
 
@@ -53,6 +54,7 @@ export function QuestionRow({
   total,
   onChange,
   onMove,
+  onDuplicate,
   onDelete,
 }: QuestionRowProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -129,7 +131,7 @@ export function QuestionRow({
         />
       </div>
 
-      {/* Bottom row: required toggle + delete (+ desktop reorder) */}
+      {/* Bottom row: required + duplicate + delete (+ desktop reorder) */}
       <div className="flex items-center justify-between px-3 pb-3 sm:justify-end sm:gap-1 sm:px-0 sm:pb-0">
         <button
           type="button"
@@ -142,6 +144,15 @@ export function QuestionRow({
           }`}
         >
           {question.is_required ? "Required ✓" : "Required"}
+        </button>
+
+        <button
+          type="button"
+          onClick={onDuplicate}
+          aria-label="Duplicate this question"
+          className="h-9 rounded-md border border-transparent px-3 text-xs font-medium text-zinc-400 hover:border-zinc-200 hover:text-zinc-900 sm:h-6 sm:rounded-none"
+        >
+          Duplicate
         </button>
 
         {confirmDelete ? (

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { HeaderBar } from "@/components/app/HeaderBar";
 import { SetupNotice } from "@/components/app/SetupNotice";
 import { getBrowserSupabase, supabaseEnvMissing } from "@/lib/supabase-browser";
+import { DashboardExtras } from "@/components/dashboard/DashboardExtras";
 
 interface FormRow {
   id: string; title: string; slug: string; is_published: boolean;
@@ -105,6 +106,7 @@ export default function DashboardPage() {
           </form>
         )}
         {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+        {!loading && <DashboardExtras onCreated={authedGet} />}
         <div className="mt-6">
           <div className="hidden grid-cols-[1fr_10rem_8rem_6rem_6rem] items-center gap-2 border-b border-zinc-200 py-2 text-xs font-medium text-zinc-500 sm:grid">
             <span>Title</span><span>Slug</span><span>Link</span><span>Status</span><span className="text-right">Actions</span>
