@@ -1,24 +1,10 @@
 "use client";
 
-/**
- * FieldRenderer — respondent-side input for a single question.
- *
- * Touch-first contract:
- *  - 44px+ tap targets on every option, rating button and input
- *  - text-base inputs (16px+ prevents iOS focus zoom)
- *  - selected options invert with a visible border + check, not color only
- *  - error text below the field with aria wiring
- *
- * Visual language: light-blue filled inputs (#eff6ff) that turn white with a
- * blue ring on focus, blue pill option rows — matches the brand backdrop.
- */
-
 import { useId } from "react";
 import type { Question } from "@/lib/types";
 
 export interface FieldRendererProps {
   question: Question;
-  /** Position in the visible form, 0-based — shown as "Q1", "Q2"… */
   index?: number;
   value: string | string[] | number | null;
   error?: string | null;
@@ -35,12 +21,7 @@ const inputBase =
 const inputError = "border-red-400 focus:border-red-500 focus:ring-red-500/25";
 
 export function FieldRenderer({
-  question,
-  index,
-  value,
-  error,
-  disabled,
-  onChange,
+  question, index, value, error, disabled, onChange,
 }: FieldRendererProps) {
   const id = useId();
   const errorId = `${id}-err`;
@@ -48,7 +29,6 @@ export function FieldRenderer({
 
   return (
     <div className="py-3" data-has-error={error ? "true" : "false"}>
-      {/* Label row */}
       <div className="mb-2">
         <label htmlFor={id} className="block text-base font-medium text-zinc-900">
           {typeof index === "number" && (
@@ -60,11 +40,10 @@ export function FieldRenderer({
           {question.is_required && <span className="ml-1 text-blue-600">*</span>}
         </label>
         {question.question_type === "rating" && rules.maxRating && (
-          <p className="mt-0.5 text-xs text-zinc-400">Tap a number from 1 to {rules.maxRating}</p>
+          <p className="mt-0.5 text-xs text-zinc-400">1 – {rules.maxRating}</p>
         )}
       </div>
 
-      {/* Input */}
       {question.question_type === "short_text" ||
       question.question_type === "email" ||
       question.question_type === "number" ||
@@ -72,49 +51,31 @@ export function FieldRenderer({
         <input
           id={id}
           type={
-            question.question_type === "email"
-              ? "email"
-              : question.question_type === "number"
-                ? "number"
-                : question.question_type === "date"
-                  ? "date"
-                  : "text"
+            question.question_type === "email" ? "email"
+              : question.question_type === "number" ? "number"
+              : question.question_type === "date" ? "date"
+              : "text"
           }
           inputMode={
-            question.question_type === "number"
-              ? "decimal"
-              : question.question_type === "email"
-                ? "email"
-                : undefined
+            question.question_type === "number" ? "decimal"
+              : question.question_type === "email" ? "email"
+              : undefined
           }
           value={value === null || Array.isArray(value) ? "" : String(value)}
-          min={rules.min}
-          max={rules.max}
-          step={rules.step}
-          maxLength={rules.maxLength}
+          min={rules.min} max={rules.max} step={rules.step} maxLength={rules.maxLength}
           disabled={disabled}
-          aria-invalid={!!error}
-          aria-describedby={error ? errorId : undefined}
-          onChange={(e) =>
-            onChange(
-              question.question_type === "number" && e.target.value !== ""
-                ? Number(e.target.value)
-                : e.target.value === ""
-                  ? null
-                  : e.target.value,
-            )
-          }
+          aria-invalid={!!error} aria-describedby={error ? errorId : undefined}
+          onChange={(e) => onChange(
+            question.question_type === "number" && e.target.value !== "" ? Number(e.target.value)
+              : e.target.value === "" ? null : e.target.value
+          )}
           className={`${inputBase} ${error ? inputError : ""}`}
         />
       ) : question.question_type === "long_text" ? (
         <textarea
-          id={id}
-          value={typeof value === "string" ? value : ""}
-          rows={4}
-          maxLength={rules.maxLength}
-          disabled={disabled}
-          aria-invalid={!!error}
-          aria-describedby={error ? errorId : undefined}
+          id={id} value={typeof value === "string" ? value : ""} rows={4}
+          maxLength={rules.maxLength} disabled={disabled}
+          aria-invalid={!!error} aria-describedby={error ? errorId : undefined}
           onChange={(e) => onChange(e.target.value === "" ? null : e.target.value)}
           className={`${inputBase} resize-y ${error ? inputError : ""}`}
         />
@@ -122,23 +83,16 @@ export function FieldRenderer({
         question.question_type === "dropdown" ? (
         question.options.length === 0 ? (
           <p className="rounded-lg border border-dashed border-zinc-300 px-3 py-3 text-sm text-zinc-400">
-            This question has no options yet and can't be answered.
+            No options yet.
           </p>
         ) : (
-          <div
-            role="radiogroup"
-            aria-labelledby={id}
-            className="space-y-2"
-          >
+          <div role="radiogroup" aria-labelledby={id} className="space-y-2">
             {question.options.map((opt) => {
               const selected = value === opt.id;
               return (
                 <button
-                  key={opt.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  disabled={disabled}
+                  key={opt.id} type="button" role="radio"
+                  aria-checked={selected} disabled={disabled}
                   onClick={() => onChange(selected ? null : opt.id)}
                   className={`flex min-h-12 w-full items-center gap-3 rounded-full border px-4 py-3 text-left text-base transition-all ${
                     selected
@@ -146,11 +100,9 @@ export function FieldRenderer({
                       : "border-blue-100 bg-blue-50/60 text-zinc-900 hover:border-blue-300 hover:bg-blue-50"
                   }`}
                 >
-                  <span
-                    className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 transition-colors ${
-                      selected ? "border-white" : "border-blue-300"
-                    }`}
-                  >
+                  <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 transition-colors ${
+                    selected ? "border-white" : "border-blue-300"
+                  }`}>
                     {selected && <span className="h-2 w-2 rounded-full bg-white" />}
                   </span>
                   <span className="min-w-0 flex-1">{opt.label}</span>
@@ -163,7 +115,7 @@ export function FieldRenderer({
       ) : question.question_type === "multi_choice" ? (
         (question.options ?? []).length === 0 ? (
           <p className="rounded-lg border border-dashed border-zinc-300 px-3 py-3 text-sm text-zinc-400">
-            This question has no options yet and can't be answered.
+            No options yet.
           </p>
         ) : (
           <div className="space-y-2">
@@ -172,19 +124,15 @@ export function FieldRenderer({
               const checked = arr.includes(opt.id);
               return (
                 <button
-                  key={opt.id}
-                  type="button"
-                  role="checkbox"
-                  aria-checked={checked}
-                  disabled={disabled}
+                  key={opt.id} type="button" role="checkbox"
+                  aria-checked={checked} disabled={disabled}
                   onClick={() => {
-                    // Exclusive options clear the rest; any other pick clears exclusives.
                     let next: string[];
                     if (opt.isExclusive) {
                       next = checked ? [] : [opt.id];
                     } else {
                       const withoutExclusive = arr.filter(
-                        (v) => question.options.find((o) => o.id === v)?.isExclusive !== true,
+                        (v) => question.options.find((o) => o.id === v)?.isExclusive !== true
                       );
                       next = checked
                         ? withoutExclusive.filter((v) => v !== opt.id)
@@ -198,11 +146,9 @@ export function FieldRenderer({
                       : "border-blue-100 bg-blue-50/60 text-zinc-900 hover:border-blue-300 hover:bg-blue-50"
                   }`}
                 >
-                  <span
-                    className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border-2 transition-colors ${
-                      checked ? "border-white" : "border-blue-300"
-                    }`}
-                  >
+                  <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border-2 transition-colors ${
+                    checked ? "border-white" : "border-blue-300"
+                  }`}>
                     {checked && <span className="text-xs leading-none">✓</span>}
                   </span>
                   <span className="min-w-0 flex-1">{opt.label}</span>
@@ -219,12 +165,8 @@ export function FieldRenderer({
             const active = num === n;
             return (
               <button
-                key={n}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                aria-label={`${n} of ${rules.maxRating ?? 5}`}
-                disabled={disabled}
+                key={n} type="button" role="radio" aria-checked={active}
+                aria-label={`${n} of ${rules.maxRating ?? 5}`} disabled={disabled}
                 onClick={() => onChange(active ? null : n)}
                 className={`h-12 w-12 rounded-full border text-base font-medium transition-all active:scale-95 ${
                   active
@@ -238,16 +180,12 @@ export function FieldRenderer({
           })}
         </div>
       ) : (
-        // file_upload placeholder — wire to Supabase Storage in the upload route
         <input
-          type="file"
-          id={id}
-          disabled={disabled}
+          type="file" id={id} disabled={disabled}
           className="block w-full rounded-lg border border-dashed border-blue-200 bg-blue-50/60 px-3 py-3 text-sm text-zinc-600 file:mr-3 file:rounded-full file:border-0 file:bg-blue-600 file:px-4 file:py-2 file:text-xs file:text-white"
         />
       )}
 
-      {/* Error line */}
       {error && (
         <p id={errorId} role="alert" className="mt-1.5 text-sm text-red-600">
           {error}
