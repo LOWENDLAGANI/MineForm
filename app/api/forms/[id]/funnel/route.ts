@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { assertUuid, handleError } from "@/lib/api";
+import { assertUuid, handleError, rateLimit } from "@/lib/api";
 import { createServiceClient } from "@/lib/supabase";
 import { apiError } from "@/lib/types";
 
@@ -30,6 +30,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   try {
     const { id } = await ctx.params;
     assertUuid(id, "form id");
+    rateLimit(req, "owner:funnel", 30);
 
     const token = req.headers.get("authorization")?.replace("Bearer ", "");
     if (!token) throw apiError("UNAUTHORIZED", "Missing bearer token", 401);

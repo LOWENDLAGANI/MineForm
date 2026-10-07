@@ -28,7 +28,14 @@ export const ValidationRulesSchema = z
     min: z.number().optional(),
     max: z.number().optional(),
     step: z.number().positive().optional(),
-    pattern: z.string().optional(),
+    pattern: z
+      .string()
+      .max(500)
+      .optional()
+      .refine((p) => {
+        if (p === undefined) return true;
+        try { new RegExp(p); return true; } catch { return false; }
+      }, { message: "Invalid regular expression" }),
     maxRating: z.number().int().min(1).max(10).optional(),
     maxFiles: z.number().int().positive().max(10).optional(),
     maxFileSizeMb: z.number().positive().optional(),
@@ -107,11 +114,13 @@ export const QuestionSchema = z
 
 export type Question = z.infer<typeof QuestionSchema>;
 
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+
 export const ThemeConfigSchema = z
   .object({
-    accent: z.string().default("#000000"),
-    surface: z.string().default("#ffffff"),
-    text: z.string().default("#09090b"),
+    accent: z.string().regex(HEX_COLOR, "Accent must be a hex color like #2563eb").default("#2563eb"),
+    surface: z.string().regex(HEX_COLOR, "Surface must be a hex color").default("#ffffff"),
+    text: z.string().regex(HEX_COLOR, "Text must be a hex color").default("#09090b"),
     font: z.enum(["inter", "geist", "system"]).default("inter"),
     width: z.enum(["compact", "regular", "wide"]).default("regular"),
   })
@@ -183,7 +192,7 @@ export const AnswerPayloadSchema = z
 export const SubmitPayloadSchema = z
   .object({
     responseId: z.string().uuid(),
-    answers: z.array(AnswerPayloadSchema).min(1),
+    answers: z.array(AnswerPayloadSchema).min(1).max(500),
   })
   .strict();
 

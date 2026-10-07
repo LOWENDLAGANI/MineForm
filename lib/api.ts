@@ -19,6 +19,16 @@ export function handleError(err: unknown) {
   if (err instanceof ZodError) {
     return jsonError("VALIDATION_ERROR", err.issues[0]?.message ?? "Invalid payload", 422);
   }
+  // Postgres unique_violation (23505): mostly slug collisions that race the
+  // pre-insert check. Surface a clean 409 instead of a 500.
+  if (err && typeof err === "object" && "code" in err && (err as { code?: unknown }).code === "23505") {
+    const message = String((err as { message?: unknown }).message ?? "");
+    return jsonError(
+      "VALIDATION_ERROR",
+      message.toLowerCase().includes("slug") ? "Slug already in use" : "Resource already exists",
+      409,
+    );
+  }
   console.error("[api]", err);
   return jsonError("INTERNAL", "Internal server error", 500);
 }

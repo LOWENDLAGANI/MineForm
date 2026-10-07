@@ -88,7 +88,10 @@ export function ConversationalForm({
   const answeredCount = questions.filter(answeredOf).length;
 
   return (
-    <div className="brand-backdrop flex min-h-dvh flex-col">
+    <div
+      className="brand-backdrop flex min-h-dvh flex-col"
+      style={{ "--accent": accent } as React.CSSProperties}
+    >
       <header className="shrink-0 px-4 pt-4 sm:px-5 sm:pt-5">
         <div className="mx-auto flex w-full max-w-md items-center gap-2">
           <span className="font-mono text-xs font-medium text-white/80">{String(step + 1).padStart(2, "0")}/{String(total).padStart(2, "0")}</span>

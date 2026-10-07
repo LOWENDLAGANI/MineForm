@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { assertUuid, handleError } from "@/lib/api";
+import { assertUuid, handleError, rateLimit } from "@/lib/api";
 import { createServiceClient } from "@/lib/supabase";
 import { apiError } from "@/lib/types";
 
@@ -14,6 +14,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   try {
     const { id } = await ctx.params;
     assertUuid(id, "form id");
+    rateLimit(req, "owner:responses", 120);
 
     const token = req.headers.get("authorization")?.replace("Bearer ", "");
     if (!token) throw apiError("UNAUTHORIZED", "Missing bearer token", 401);
@@ -32,8 +33,17 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
     const url = new URL(req.url);
     const status = url.searchParams.get("status");
-    const limit = Math.min(Number(url.searchParams.get("limit") ?? 50), 200);
+
+    // NaN/negative/absurd limits previously reached PostgREST as-is.
+    const rawLimit = Number(url.searchParams.get("limit"));
+    const limit = Number.isFinite(rawLimit) && rawLimit >= 1
+      ? Math.min(Math.floor(rawLimit), 200)
+      : 50;
+
     const cursor = url.searchParams.get("cursor");
+    if (cursor !== null && Number.isNaN(Date.parse(cursor))) {
+      throw apiError("VALIDATION_ERROR", "Invalid cursor", 400);
+    }
 
     let query = supabase
       .from("responses")

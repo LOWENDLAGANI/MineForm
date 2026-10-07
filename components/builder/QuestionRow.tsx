@@ -19,7 +19,7 @@ const TYPE_LABELS: Record<QuestionType, string> = {
   date: "Date",
   number: "Number",
   email: "Email",
-  file_upload: "File upload",
+  file_upload: "File upload (link)",
 };
 
 const TYPE_ORDER = Object.keys(TYPE_LABELS) as QuestionType[];

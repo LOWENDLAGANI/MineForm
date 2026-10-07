@@ -133,7 +133,7 @@ export default function ResponsesPage() {
 
   function exportCsv() {
     const header = ["response_id", "submitted_at", ...questions.map((q) => q.question_text)];
-    const sanitize = (v: string) => v.replace(/^[=+@\t\r]/, "'");
+    const sanitize = (v: string) => v.replace(/^[=+\-@\t\r]/, "'");
     const esc = (v: string) => `"${sanitize(v).replace(/"/g, '""')}"`;
     const lines = [header.map(esc).join(",")];
     for (const r of filtered) {

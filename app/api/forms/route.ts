@@ -1,11 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { handleError, parseBody } from "@/lib/api";
+import { handleError, parseBody, rateLimit } from "@/lib/api";
 import { createServiceClient } from "@/lib/supabase";
 import {
   CloseConfigSchema,
   LogicRuleSchema,
   OptionSchema,
+  ThemeConfigSchema,
   ValidationRulesSchema,
   apiError,
 } from "@/lib/types";
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
  * ------------------------------------------------------------------------- */
 export async function GET(req: NextRequest) {
   try {
+    rateLimit(req, "owner:list", 120);
     const token = req.headers.get("authorization")?.replace("Bearer ", "");
     if (!token) throw apiError("UNAUTHORIZED", "Missing bearer token", 401);
 
@@ -75,13 +77,14 @@ const CreateFormSchema = z.object({
   renderer_mode: z.enum(["classic", "conversational"]).default("classic"),
   send_confirmation_email: z.boolean().default(false),
   close_config: CloseConfigSchema.default({ conditions: [] }),
-  theme_config: z.record(z.unknown()).default({}),
+  theme_config: ThemeConfigSchema.default({}),
   payment_config: z.record(z.unknown()).default({}),
   questions: z.array(QuestionInputSchema).default([]),
 });
 
 export async function POST(req: NextRequest) {
   try {
+    rateLimit(req, "owner:create", 30);
     const token = req.headers.get("authorization")?.replace("Bearer ", "");
     if (!token) throw apiError("UNAUTHORIZED", "Missing bearer token", 401);
 

@@ -22,6 +22,7 @@ const SaveDraftSchema = z
             message: "answer must set either text or json",
           }),
       )
+      .max(500)
       .default([]),
     /** Optional email for the recovery link + confirmation on final submit. */
     email: z.string().email().max(320).nullable().optional(),
@@ -72,6 +73,26 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       throw apiError("RESPONSE_EXPIRED", "Time limit exceeded", 403);
     }
 
+    // Every answer must reference a question on THIS form. Without this the
+    // DB's enforce_answers_same_form trigger rejects the insert and the
+    // respondent gets a 500 instead of a 400. Duplicate question ids would
+    // also double-count in charts/funnel — keep the last value per question.
+    const { data: questionRows, error: qErr } = await supabase
+      .from("questions")
+      .select("id")
+      .eq("form_id", form.id);
+    if (qErr) throw qErr;
+    const validIds = new Set((questionRows ?? []).map((q) => q.id));
+
+    const deduped = new Map<string, (typeof body.answers)[number]>();
+    for (const a of body.answers) {
+      if (!validIds.has(a.questionId)) {
+        throw apiError("VALIDATION_ERROR", "Unknown question in draft", 400);
+      }
+      deduped.set(a.questionId, a);
+    }
+    const draftAnswers = [...deduped.values()];
+
     // Replace the draft answer set atomically-ish: delete + insert. Drafts
     // are only ever read through the resume endpoint, so a torn state between
     // delete and insert is invisible to respondents.
@@ -81,8 +102,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       .eq("response_id", response.id);
     if (del.error) throw del.error;
 
-    if (body.answers.length > 0) {
-      const rows = body.answers.map((a) => ({
+    if (draftAnswers.length > 0) {
+      const rows = draftAnswers.map((a) => ({
         response_id: response.id,
         question_id: a.questionId,
         answer_text: a.text ?? null,

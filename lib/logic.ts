@@ -166,8 +166,21 @@ export function validateAnswers(
     if (text && rules.maxLength !== undefined && text.length > rules.maxLength) {
       issues.push({ questionId: q.id, message: `Maximum ${rules.maxLength} characters` });
     }
-    if (text && rules.pattern && !new RegExp(rules.pattern).test(text)) {
-      issues.push({ questionId: q.id, message: "Invalid format" });
+    if (text && rules.pattern) {
+      // Never let a malformed stored pattern throw a 500 mid-submission.
+      try {
+        if (!new RegExp(rules.pattern).test(text)) {
+          issues.push({ questionId: q.id, message: "Invalid format" });
+        }
+      } catch {
+        issues.push({ questionId: q.id, message: "Invalid format" });
+      }
+    }
+
+    // File-upload questions collect a link (no object storage yet) — make
+    // sure respondents paste a real URL so required questions stay answerable.
+    if (q.question_type === "file_upload" && text && !/^https?:\/\/\S{4,}$/i.test(text.trim())) {
+      issues.push({ questionId: q.id, message: "Please paste a link starting with http:// or https://" });
     }
   }
 

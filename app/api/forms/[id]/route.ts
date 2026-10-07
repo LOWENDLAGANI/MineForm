@@ -1,12 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { assertUuid, handleError, parseBody } from "@/lib/api";
+import { assertUuid, handleError, parseBody, rateLimit } from "@/lib/api";
 import { createServiceClient } from "@/lib/supabase";
 import { apiError } from "@/lib/types";
 import {
   CloseConfigSchema,
   LogicRuleSchema,
   OptionSchema,
+  ThemeConfigSchema,
   ValidationRulesSchema,
 } from "@/lib/types";
 
@@ -25,15 +26,27 @@ async function requireUser(req: NextRequest) {
   return { supabase, user: data.user };
 }
 
-/** Loads a form row and verifies the caller owns it. */
-async function requireOwnedForm(supabase: ReturnType<typeof createServiceClient>, id: string) {
+/**
+ * Loads a form row and verifies the CALLER owns it.
+ * The service-role client bypasses RLS, so this comparison is the only thing
+ * standing between any signed-in user and someone else's form. Missing and
+ * not-owned both return 404 — no existence oracle.
+ */
+async function requireOwnedForm(
+  supabase: ReturnType<typeof createServiceClient>,
+  id: string,
+  userId: string,
+) {
   const { data: existing, error } = await supabase
     .from("forms")
     .select("id, user_id")
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
-  if (error || !existing) throw apiError("NOT_FOUND", "Form not found", 404);
+  if (error) throw error;
+  if (!existing || existing.user_id !== userId) {
+    throw apiError("NOT_FOUND", "Form not found", 404);
+  }
   return existing;
 }
 
@@ -76,7 +89,9 @@ const PatchSchema = z
     renderer_mode: z.enum(["classic", "conversational"]).optional(),
     send_confirmation_email: z.boolean().optional(),
     close_config: CloseConfigSchema.optional(),
-    theme_config: z.record(z.unknown()).optional(),
+    // Accents end up in inline styles — validate known fields, tolerate
+    // unknown keys so older stored themes still round-trip.
+    theme_config: ThemeConfigSchema.partial().passthrough().optional(),
     payment_config: z.record(z.unknown()).optional(),
     is_published: z.boolean().optional(),
     /** Full ordered question set — replaces whatever is stored. */
@@ -89,6 +104,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     const { id } = await ctx.params;
     assertUuid(id, "form id");
 
+    rateLimit(req, "owner:write", 120);
+
     const { supabase, user } = await requireUser(req);
 
     const body = await parseBody(req, PatchSchema);
@@ -96,7 +113,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       throw apiError("VALIDATION_ERROR", "Empty patch", 400);
     }
 
-    await requireOwnedForm(supabase, id);
+    await requireOwnedForm(supabase, id, user.id);
 
     // Questions: upsert the full ordered set (stable ids keep existing
     // answer rows intact), then remove any questions the builder dropped.
@@ -190,8 +207,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     const { id } = await ctx.params;
     assertUuid(id, "form id");
 
+    rateLimit(req, "owner:read", 120);
+
     const { supabase, user } = await requireUser(req);
-    await requireOwnedForm(supabase, id);
+    await requireOwnedForm(supabase, id, user.id);
 
     const { data: form, error } = await supabase
       .from("forms")
@@ -223,10 +242,10 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
     const { id } = await ctx.params;
     assertUuid(id, "form id");
 
-    const { supabase, user } = await requireUser(req);
+    rateLimit(req, "owner:delete", 20);
 
-    const existing = await requireOwnedForm(supabase, id);
-    void existing;
+    const { supabase, user } = await requireUser(req);
+    await requireOwnedForm(supabase, id, user.id);
 
     const { error } = await supabase.from("forms").delete().eq("id", id);
     if (error) throw error;

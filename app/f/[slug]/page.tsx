@@ -16,6 +16,7 @@ interface PublicForm {
   time_limit_minutes: number | null;
   response_cap: number | null;
   renderer_mode: "classic" | "conversational";
+  theme_config: { accent?: string } | null;
   submitted_count: number;
   is_capped: boolean;
   is_closed: boolean;
@@ -57,6 +58,21 @@ function formatTime(totalSeconds: number): string {
 }
 
 const ACCENT = "#2563eb";
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+
+/** Human-readable answer for the post-submit receipt (choice ids -> labels). */
+function displayAnswer(q: Question, raw: unknown): string {
+  const asLabel = (v: unknown) =>
+    q.question_type === "single_choice" ||
+    q.question_type === "dropdown" ||
+    q.question_type === "multi_choice"
+      ? (q.options.find((o) => o.id === v)?.label ?? String(v))
+      : String(v);
+  if (raw === null || raw === undefined || raw === "") return "—";
+  if (Array.isArray(raw)) return raw.map(asLabel).join(", ") || "—";
+  if (typeof raw === "object") return JSON.stringify(raw);
+  return asLabel(raw);
+}
 
 function StateCard({ icon, title, body, children }: { icon: string; title: string; body?: string; children?: React.ReactNode }) {
   return (
@@ -94,6 +110,10 @@ export default function PublicFormPage() {
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftCopied, setDraftCopied] = useState(false);
   const [resumedDraft, setResumedDraft] = useState(false);
+  const [draftNotice, setDraftNotice] = useState<string | null>(null);
+  const [submittedAnswers, setSubmittedAnswers] = useState<
+    { questionId: string; text?: string | null; json?: unknown }[] | null
+  >(null);
 
   useEffect(() => {
     fetch(`/api/public/forms/${slug}`)
@@ -113,9 +133,15 @@ export default function PublicFormPage() {
         const res = await fetch(`/api/public/forms/${slug}/resume?token=${encodeURIComponent(resumeToken)}`);
         const body = await res.json().catch(() => null);
         if (!res.ok) {
-          if (!cancelled) setLoadError(
-            body?.error?.message === "This response was already submitted" ? "Draft already submitted." : "Invalid recovery link."
-          );
+          // Non-blocking: a stale/invalid recovery link should leave the
+          // respondent able to start fresh instead of a dead error card.
+          if (!cancelled) {
+            setDraftNotice(
+              body?.error?.message === "This response was already submitted"
+                ? "That draft was already submitted — starting fresh."
+                : "Couldn't restore that draft — starting fresh."
+            );
+          }
           return;
         }
         if (cancelled) return;
@@ -244,6 +270,8 @@ export default function PublicFormPage() {
         submittedRef.current = true;
         if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
         clearLocalDraft(slug);
+        const data = await res.json().catch(() => null);
+        setSubmittedAnswers(Array.isArray(data?.answers) ? data.answers : []);
         setSubmitted(true);
         window.scrollTo({ top: 0 });
         return;
@@ -259,11 +287,40 @@ export default function PublicFormPage() {
     } finally { setSubmitting(false); }
   }
 
-  if (loadError) return <div className="brand-backdrop"><StateCard icon="⚠️" title="Can't open this form" body={loadError} /></div>;
-  if (submitted) return <div className="brand-backdrop"><StateCard icon="✓" title="Response submitted" /></div>;
+  // Theme: owner-picked accent drives every primary control via --accent.
+  const accent = form?.theme_config?.accent && HEX_RE.test(form.theme_config.accent)
+    ? form.theme_config.accent
+    : ACCENT;
+  const themeStyle = { "--accent": accent } as React.CSSProperties;
+
+  // Receipt: what the server stored for this submission.
+  const recapEntries: { q: Question; value: unknown }[] = [];
+  for (const a of submittedAnswers ?? []) {
+    const q = questions.find((x) => x.id === a.questionId);
+    if (q) recapEntries.push({ q, value: a.text ?? a.json });
+  }
+
+  if (loadError) return <div className="brand-backdrop" style={themeStyle}><StateCard icon="⚠️" title="Can't open this form" body={loadError} /></div>;
+  if (submitted) return (
+    <div className="brand-backdrop" style={themeStyle}>
+      <StateCard icon="✓" title="Response submitted">
+        {recapEntries.length > 0 && (
+          <div className="mt-4 max-h-72 overflow-y-auto rounded-xl border border-zinc-100 bg-zinc-50/80 p-3 text-left">
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">Your answers</p>
+            {recapEntries.map(({ q, value }) => (
+              <div key={q.id} className="border-b border-zinc-200/70 py-2 last:border-0">
+                <p className="text-[11px] font-medium text-zinc-400">{q.question_text}</p>
+                <p className="mt-0.5 break-words text-sm text-zinc-800">{displayAnswer(q, value)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </StateCard>
+    </div>
+  );
 
   if (!form) return (
-    <div className="brand-backdrop">
+    <div className="brand-backdrop" style={themeStyle}>
       <main className="flex min-h-dvh items-center justify-center">
         <div className="flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm text-white backdrop-blur">
           <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
@@ -274,7 +331,7 @@ export default function PublicFormPage() {
   );
 
   if (form.is_closed || form.is_capped) return (
-    <div className="brand-backdrop">
+    <div className="brand-backdrop" style={themeStyle}>
       <StateCard icon="🔒" title="This form is closed" body={form.is_capped ? `Limit of ${form.response_cap} responses reached.` : "Not accepting responses."} />
     </div>
   );
@@ -282,7 +339,7 @@ export default function PublicFormPage() {
   const expired = remaining === 0;
 
   if (!responseId) return (
-    <div className="brand-backdrop">
+    <div className="brand-backdrop" style={themeStyle}>
       <main className="flex min-h-dvh items-center justify-center px-4 py-10">
         <div className="card-in w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl shadow-blue-950/20">
           <div className="bg-slate-800 px-6 py-4">
@@ -290,6 +347,11 @@ export default function PublicFormPage() {
           </div>
           <div className="px-6 py-6">
             {form.description && <p className="text-sm text-zinc-500">{form.description}</p>}
+            {draftNotice && (
+              <div role="status" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                {draftNotice}
+              </div>
+            )}
             <div className="mt-5 space-y-2.5">
               <div className="flex items-center justify-between rounded-lg bg-blue-50/70 px-3.5 py-2.5 text-sm">
                 <span className="text-zinc-500">Questions</span>
@@ -315,7 +377,7 @@ export default function PublicFormPage() {
                 <div className="mt-3 flex gap-2">
                   <button
                     type="button" onClick={() => start(localDraftPrompt)} disabled={starting}
-                    className="flex-1 rounded-full bg-blue-600 px-3 py-2.5 text-xs font-semibold text-white shadow-sm shadow-blue-600/30 hover:bg-blue-700 disabled:opacity-50"
+                    className="accent-bg flex-1 rounded-full px-3 py-2.5 text-xs font-semibold text-white shadow-sm shadow-blue-600/30 disabled:opacity-50"
                   >
                     Continue
                   </button>
@@ -330,7 +392,7 @@ export default function PublicFormPage() {
             )}
             <button
               type="button" onClick={() => start()} disabled={starting}
-              className="mt-5 w-full rounded-full bg-blue-600 px-4 py-4 text-base font-semibold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-700 active:scale-[0.99] disabled:opacity-50"
+              className="accent-bg mt-5 w-full rounded-full px-4 py-4 text-base font-semibold text-white shadow-lg shadow-blue-600/30 transition-all active:scale-[0.99] disabled:opacity-50"
             >
               {starting ? "Starting…" : form.time_limit_minutes ? "Start timed form" : "Start"}
             </button>
@@ -341,7 +403,7 @@ export default function PublicFormPage() {
   );
 
   if (expired) return (
-    <div className="brand-backdrop">
+    <div className="brand-backdrop" style={themeStyle}>
       <StateCard icon="⏱" title="Time's up" body="Time limit expired." />
     </div>
   );
@@ -385,7 +447,7 @@ export default function PublicFormPage() {
     return (
       <ConversationalForm
         title={form.title} description={form.description} questions={visibleQuestions}
-        values={values} errors={errors} disabled={submitting} accent={ACCENT}
+        values={values} errors={errors} disabled={submitting} accent={accent}
         onChange={(qid, v) => { setValues((s) => ({ ...s, [qid]: v })); setErrors((s) => { if (!s[qid]) return s; const next = { ...s }; delete next[qid]; return next; }); }}
         onSubmit={submit} submitting={submitting} footer={saveAndResumeBlock}
       />
@@ -395,7 +457,7 @@ export default function PublicFormPage() {
   const pct = visibleQuestions.length === 0 ? 0 : Math.round((answeredCount / visibleQuestions.length) * 100);
 
   return (
-    <div className="brand-backdrop">
+    <div className="brand-backdrop" style={themeStyle}>
       <header className="sticky top-0 z-30 bg-white/10 backdrop-blur-md">
         <div className="mx-auto max-w-md px-4 py-2.5">
           <div className="flex items-center justify-between gap-3">
@@ -437,7 +499,7 @@ export default function PublicFormPage() {
             <div className="mt-6 hidden sm:block">
               <button
                 type="submit" disabled={submitting}
-                className="w-full rounded-full bg-blue-600 px-4 py-3.5 text-base font-semibold text-white shadow-lg shadow-blue-600/30 transition-all hover:bg-blue-700 active:scale-[0.99] disabled:opacity-50"
+                className="accent-bg w-full rounded-full px-4 py-3.5 text-base font-semibold text-white shadow-lg shadow-blue-600/30 transition-all active:scale-[0.99] disabled:opacity-50"
               >
                 {submitting ? "Submitting…" : "Submit answers"}
               </button>
@@ -450,7 +512,7 @@ export default function PublicFormPage() {
         <div className="mx-auto flex max-w-md items-center gap-2">
           <button
             type="submit" disabled={submitting} onClick={submit}
-            className="min-w-0 flex-1 rounded-full bg-blue-600 px-4 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/30 active:scale-[0.99] disabled:opacity-50"
+            className="accent-bg min-w-0 flex-1 rounded-full px-4 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/30 active:scale-[0.99] disabled:opacity-50"
           >
             {submitting ? "Submitting…" : "Submit answers"}
           </button>

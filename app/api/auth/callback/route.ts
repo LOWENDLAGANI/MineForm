@@ -18,9 +18,19 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") ?? "/";
 
-  const target = new URL(code ? "/login" : next, url.origin);
+  // `next` is attacker-controlled (it rides along OAuth redirect URLs).
+  // Only accept same-site, root-relative paths — `//evil.com` and
+  // `https://evil.com` resolve off-origin and would turn the OAuth return
+  // into a phishing redirect.
+  const rawNext = url.searchParams.get("next") ?? "/";
+  const safeNext =
+    rawNext.startsWith("/") && !rawNext.startsWith("//") && !rawNext.startsWith("/\\")
+      ? rawNext
+      : "/";
+
+  const target = new URL(code ? "/login" : safeNext, url.origin);
+  if (target.origin !== url.origin) target.href = `${url.origin}/`;
   if (code) target.searchParams.set("code", code);
   return NextResponse.redirect(target);
 }

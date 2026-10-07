@@ -14,8 +14,15 @@ interface FormState {
   id: string; title: string; description: string | null; slug: string;
   time_limit_minutes: number | null; response_cap: number | null;
   renderer_mode: "classic" | "conversational";
+  theme_config: Record<string, unknown>;
   send_confirmation_email: boolean; close_config: CloseConfigValue; is_published: boolean;
 }
+
+const ACCENT_SWATCHES = [
+  "#2563eb", "#0f172a", "#059669", "#d97706",
+  "#dc2626", "#7c3aed", "#db2777", "#0891b2",
+] as const;
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 const input = "w-full rounded-md border border-zinc-300 bg-white px-3 py-2.5 text-base text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-1 focus:ring-inset focus:ring-zinc-900 sm:text-sm";
 const label = "block text-xs font-medium text-zinc-600";
@@ -55,6 +62,7 @@ export default function FormBuilderPage() {
         slug: data.form.slug, time_limit_minutes: data.form.time_limit_minutes,
         response_cap: data.form.response_cap,
         renderer_mode: data.form.renderer_mode ?? "classic",
+        theme_config: data.form.theme_config ?? {},
         send_confirmation_email: data.form.send_confirmation_email ?? false,
         close_config: data.form.close_config ?? { close_at: null, conditions: [] },
         is_published: data.form.is_published,
@@ -93,6 +101,7 @@ export default function FormBuilderPage() {
         renderer_mode: data.form.renderer_mode ?? f.renderer_mode,
         send_confirmation_email: data.form.send_confirmation_email ?? f.send_confirmation_email,
         close_config: data.form.close_config ?? f.close_config, is_published: data.form.is_published,
+        theme_config: data.form.theme_config ?? f.theme_config,
       } : f);
       if (data.form.slug) setSlug(data.form.slug);
       setStatus("Saved"); setTimeout(() => setStatus(null), 1500);
@@ -152,6 +161,11 @@ export default function FormBuilderPage() {
     <div className="min-h-screen bg-white"><HeaderBar /><main className="mx-auto max-w-5xl px-6 py-8 text-xs text-zinc-400">Loading…</main></div>
   );
 
+  const storedAccent = form.theme_config?.accent;
+  const currentAccent = typeof storedAccent === "string" && HEX_RE.test(storedAccent)
+    ? storedAccent
+    : "#2563eb";
+
   return (
     <div className="min-h-screen bg-white pb-24 sm:pb-0">
       <HeaderBar />
@@ -197,6 +211,35 @@ export default function FormBuilderPage() {
                   ))}
                 </div>
               </div>
+            </section>
+            <section className="px-4 py-3 sm:px-0">
+              <h2 className="mb-2 text-xs font-medium text-zinc-900">Theme</h2>
+              <div className="flex flex-wrap items-center gap-2">
+                {ACCENT_SWATCHES.map((c) => (
+                  <button
+                    key={c} type="button" disabled={saving}
+                    onClick={() => patchForm({ theme_config: { ...(form.theme_config ?? {}), accent: c } })}
+                    aria-label={`Accent color ${c}`} aria-pressed={currentAccent === c}
+                    className={`h-8 w-8 rounded-full border-2 transition-transform ${currentAccent === c ? "scale-110 border-zinc-900" : "border-zinc-200 hover:scale-105"}`}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+                <label className="ml-1 flex items-center gap-1.5 text-[11px] text-zinc-500">
+                  Custom
+                  <input
+                    key={currentAccent} type="color" disabled={saving} defaultValue={currentAccent}
+                    onBlur={(e) => {
+                      const v = e.target.value;
+                      if (HEX_RE.test(v) && v !== currentAccent) {
+                        patchForm({ theme_config: { ...(form.theme_config ?? {}), accent: v } });
+                      }
+                    }}
+                    className="h-8 w-10 cursor-pointer rounded border border-zinc-300 bg-white p-0.5"
+                    aria-label="Custom accent color"
+                  />
+                </label>
+              </div>
+              <p className="mt-1.5 text-[11px] text-zinc-400">Colors buttons and inputs on the public form.</p>
             </section>
             <section className="px-4 py-3 sm:px-0">
               <label className="flex items-center justify-between gap-3">

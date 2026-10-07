@@ -105,7 +105,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     }
 
     // -- Conditional logic + validation (server recomputes everything) ---
-    const answers: AnswerPayload[] = body.answers;
+    // Dedupe by question id: repeated ids would insert duplicate answer rows
+    // and inflate every chart + the funnel. Last value wins (matches the
+    // client, which keeps a single value per question).
+    const dedupedAnswers = new Map<string, AnswerPayload>();
+    for (const a of body.answers) dedupedAnswers.set(a.questionId, a);
+    const answers: AnswerPayload[] = [...dedupedAnswers.values()];
     const answersByQuestionId: Record<string, unknown> = {};
     for (const a of answers) {
       answersByQuestionId[a.questionId] = a.text ?? a.json ?? null;
@@ -203,7 +208,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       }).catch(() => undefined);
     }
 
-    return NextResponse.json({ response: sealed });
+    // Echo the stored answers so the client can show respondents a receipt.
+    return NextResponse.json({
+      response: sealed,
+      answers: rows.map((r) => ({
+        questionId: r.question_id,
+        text: r.answer_text,
+        json: r.answer_json,
+      })),
+    });
   } catch (err) {
     return handleError(err);
   }
