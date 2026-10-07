@@ -1,12 +1,5 @@
 "use client";
 
-/**
- * CloseConditionsEditor — owner-side close rules.
- *  - Auto-close by date
- *  - Conditional close: "close when N answers to Q match a value"
- * Rules OR together: any met condition closes the form.
- */
-
 import { useMemo, useState } from "react";
 import type { CloseCondition, Question } from "@/lib/types";
 
@@ -23,29 +16,22 @@ export interface CloseConditionsEditorProps {
 }
 
 export function CloseConditionsEditor({
-  value,
-  questions,
-  disabled,
-  onChange,
+  value, questions, disabled, onChange,
 }: CloseConditionsEditorProps) {
   const conditions = value.conditions ?? [];
   const [showEditor, setShowEditor] = useState(false);
 
   const choiceQuestions = useMemo(
-    () =>
-      questions.filter((q) =>
-        ["single_choice", "multi_choice", "dropdown", "rating", "short_text", "email", "number"].includes(
-          q.question_type,
-        ),
+    () => questions.filter((q) =>
+      ["single_choice", "multi_choice", "dropdown", "rating", "short_text", "email", "number"].includes(
+        q.question_type,
       ),
+    ),
     [questions],
   );
 
   function setCloseAt(raw: string) {
-    onChange({
-      ...value,
-      close_at: raw ? new Date(raw).toISOString() : null,
-    });
+    onChange({ ...value, close_at: raw ? new Date(raw).toISOString() : null });
   }
 
   function addCondition() {
@@ -53,12 +39,7 @@ export function CloseConditionsEditor({
       ...value,
       conditions: [
         ...conditions,
-        {
-          question_id: choiceQuestions[0]?.id ?? "",
-          operator: "eq",
-          value: "",
-          count: 1,
-        },
+        { question_id: choiceQuestions[0]?.id ?? "", operator: "eq", value: "", count: 1 },
       ],
     });
   }
@@ -71,10 +52,7 @@ export function CloseConditionsEditor({
   }
 
   function removeCondition(i: number) {
-    onChange({
-      ...value,
-      conditions: conditions.filter((_, idx) => idx !== i),
-    });
+    onChange({ ...value, conditions: conditions.filter((_, idx) => idx !== i) });
   }
 
   const condLabel = (qid: string) =>
@@ -87,24 +65,19 @@ export function CloseConditionsEditor({
           Auto-close date
         </label>
         <input
-          id="f-close-at"
-          type="datetime-local"
-          disabled={disabled}
+          id="f-close-at" type="datetime-local" disabled={disabled}
           value={value.close_at ? toLocalInput(value.close_at) : ""}
           onChange={(e) => setCloseAt(e.target.value)}
           className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 focus:ring-1 focus:ring-inset focus:ring-zinc-900"
         />
-        <p className="mt-1 text-[11px] text-zinc-400">
-          The form stops accepting responses after this moment.
-        </p>
+        <p className="mt-1 text-[11px] text-zinc-400">After this time.</p>
       </div>
 
       <div>
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-zinc-600">Close conditions</span>
           <button
-            type="button"
-            disabled={disabled}
+            type="button" disabled={disabled}
             onClick={() => setShowEditor((s) => !s)}
             className="text-xs text-zinc-500 hover:text-zinc-900"
           >
@@ -115,8 +88,8 @@ export function CloseConditionsEditor({
         {!showEditor ? (
           <p className="mt-1 text-[11px] text-zinc-400">
             {conditions.length === 0
-              ? "None — form stays open until capped or unpublished."
-              : `${conditions.length} condition${conditions.length > 1 ? "s" : ""} set`}
+              ? "None."
+              : `${conditions.length} condition${conditions.length > 1 ? "s" : ""}`}
           </p>
         ) : (
           <div className="mt-2 space-y-2">
@@ -125,8 +98,7 @@ export function CloseConditionsEditor({
                 <div className="flex items-start gap-2">
                   <span className="pt-1.5 text-xs text-zinc-400">When</span>
                   <select
-                    value={c.question_id}
-                    disabled={disabled}
+                    value={c.question_id} disabled={disabled}
                     onChange={(e) => patchCondition(i, { question_id: e.target.value })}
                     className="min-w-0 flex-1 rounded border border-zinc-300 bg-white px-1.5 py-1 text-xs"
                   >
@@ -138,8 +110,7 @@ export function CloseConditionsEditor({
                     ))}
                   </select>
                   <button
-                    type="button"
-                    onClick={() => removeCondition(i)}
+                    type="button" onClick={() => removeCondition(i)}
                     className="pt-1 text-xs text-zinc-400 hover:text-red-600"
                     aria-label="Remove condition"
                   >
@@ -148,20 +119,16 @@ export function CloseConditionsEditor({
                 </div>
                 <div className="flex items-center gap-2">
                   <select
-                    value={c.operator}
-                    disabled={disabled}
-                    onChange={(e) =>
-                      patchCondition(i, { operator: e.target.value as "eq" | "contains" })
-                    }
+                    value={c.operator} disabled={disabled}
+                    onChange={(e) => patchCondition(i, { operator: e.target.value as "eq" | "contains" })}
                     className="rounded border border-zinc-300 bg-white px-1.5 py-1 text-xs"
                   >
                     <option value="eq">equals</option>
                     <option value="contains">contains</option>
                   </select>
                   <input
-                    value={c.value}
-                    disabled={disabled}
-                    placeholder="value (e.g. yes)"
+                    value={c.value} disabled={disabled}
+                    placeholder="value"
                     onChange={(e) => patchCondition(i, { value: e.target.value })}
                     className="min-w-0 flex-1 rounded border border-zinc-300 bg-white px-1.5 py-1 text-xs"
                   />
@@ -169,16 +136,11 @@ export function CloseConditionsEditor({
                 <div className="flex items-center gap-2 text-xs text-zinc-500">
                   <span>after</span>
                   <input
-                    type="number"
-                    min={1}
-                    disabled={disabled}
+                    type="number" min={1} disabled={disabled}
                     value={c.count ?? 1}
                     onChange={(e) => patchCondition(i, { count: Number(e.target.value) || 1 })}
                     className="w-16 rounded border border-zinc-300 bg-white px-1.5 py-1 text-xs"
                   />
-                  <span>
-                    response{((c.count ?? 1) > 1 ? "s" : "")} match — closes form
-                  </span>
                 </div>
                 {c.question_id && (
                   <p className="truncate text-[11px] text-zinc-400">
@@ -188,12 +150,11 @@ export function CloseConditionsEditor({
               </div>
             ))}
             <button
-              type="button"
-              disabled={disabled || choiceQuestions.length === 0}
+              type="button" disabled={disabled || choiceQuestions.length === 0}
               onClick={addCondition}
               className="w-full rounded-md border border-dashed border-zinc-300 py-1.5 text-xs text-zinc-500 hover:border-zinc-900 hover:text-zinc-900 disabled:opacity-40"
             >
-              + Add condition
+              + Add
             </button>
           </div>
         )}
