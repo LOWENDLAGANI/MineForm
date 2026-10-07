@@ -219,6 +219,12 @@ export default function FormBuilderPage() {
                 {form.is_published ? "Unpublish" : "Publish"}
               </button>
             </section>
+            <section className="px-4 py-3 sm:px-0">
+              <Link href={`/forms/${form.id}/responses`}
+                className="flex items-center justify-center gap-2 rounded-full bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/30 transition-all hover:bg-blue-700 active:scale-95">
+                View responses <span aria-hidden="true">→</span>
+              </Link>
+            </section>
             {form.is_published && (
               <section className="px-4 py-3 sm:px-0">
                 <span className="text-xs text-zinc-500">Public link</span>
@@ -226,7 +232,6 @@ export default function FormBuilderPage() {
                   <a href={`/f/${slug}`} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate font-mono text-xs text-zinc-900 hover:underline">/f/{slug}</a>
                   <button type="button" onClick={() => { navigator.clipboard?.writeText(`${window.location.origin}/f/${slug}`); setStatus("Link copied"); setTimeout(() => setStatus(null), 1500); }} className="shrink-0 rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:border-zinc-900">Copy</button>
                 </div>
-                <Link href={`/forms/${form.id}/responses`} className="mt-2 block text-xs text-zinc-500 hover:text-zinc-900">View responses →</Link>
               </section>
             )}
           </aside>
