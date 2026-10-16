@@ -376,7 +376,9 @@ export type ApiErrorCode =
   | "EMAIL_VERIFICATION_REQUIRED"
   | "DUPLICATE_EMAIL"
   | "LINK_EXPIRED"
-  | "INTERNAL";
+  | "INTERNAL"
+  | "WAITING_ROOM"
+  | "WAITING_ROOM_SESSION_EXPIRED";
 
 export interface ApiError {
   error: { code: ApiErrorCode; message: string };
@@ -396,3 +398,8 @@ export class ApiErrorFactory extends Error {
 export function apiError(code: ApiErrorCode, message: string, status = 400): ApiErrorFactory {
   return new ApiErrorFactory(code, message, status);
 }
+
+// Waiting room error codes
+export type WaitingRoomApiErrorCode =
+  | "WAITING_ROOM"
+  | "WAITING_ROOM_SESSION_EXPIRED";

@@ -16,6 +16,7 @@ import { checkGeoDevice, isLinkExpired, verifyPassword } from "@/lib/access";
 import { computeScore } from "@/lib/scoring";
 import { fireIntegrations } from "@/lib/webhooks";
 import { pipeText } from "@/lib/piping";
+import { removeActiveUser, tryAdmitNext } from "@/lib/waiting-room";
 
 export const dynamic = "force-dynamic";
 
@@ -201,6 +202,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       // 0 rows updated => a concurrent request already sealed this response.
       throw apiError("VALIDATION_ERROR", "Response already submitted", 409);
     }
+
+    // Remove this user from active tracking and trigger waiting room admission
+    removeActiveUser(form.id, response.id);
+    tryAdmitNext(form.id);
 
     const rows = answers.map((a) => ({
       response_id: response.id,

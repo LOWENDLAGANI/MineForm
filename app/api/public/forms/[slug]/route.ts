@@ -4,6 +4,7 @@ import { createServiceClient } from "@/lib/supabase";
 import { QuestionSchema, type Question } from "@/lib/types";
 import type { Database } from "@/lib/db-types";
 import { hasPassword, isLinkExpired } from "@/lib/access";
+import { getWaitingRoomConfig, getWaitingQueue, getActiveUserCount } from "@/lib/waiting-room";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +73,12 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ slug: stri
     const scoring = (form.scoring_config ?? {}) as Record<string, unknown>;
     const access = (form.access_config ?? {}) as Record<string, unknown>;
 
+    // Get waiting room config and current queue status
+    const waitingRoomConfig = getWaitingRoomConfig(form.id);
+    const activeUserCount = getActiveUserCount(form.id);
+    const totalActive = submittedCount + activeUserCount;
+    const spotsLeft = Math.max(0, (form.response_cap ?? 0) - totalActive);
+
     return NextResponse.json({
       form: {
         id: form.id,
@@ -97,6 +104,12 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ slug: stri
         hidden_fields: Array.isArray(settings.hidden_fields) ? settings.hidden_fields : [],
         scoring_enabled: scoring.enabled === true,
         progress_bar: settings.progress_bar !== false,
+        // Waiting room info
+        waitingRoomEnabled: waitingRoomConfig.enabled,
+        waitingRoomMaxActive: waitingRoomConfig.maxActive,
+        activeUserCount,
+        spotsLeft,
+        queueLength: getWaitingQueue(form.id).length,
       },
       questions,
     });
