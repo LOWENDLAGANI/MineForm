@@ -46,14 +46,14 @@ interface FormState {
 
 type Tab = "build" | "design" | "settings" | "share" | "access" | "integrate" | "team";
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: "build", label: "Build", icon: "🧱" },
-  { id: "design", label: "Design", icon: "🎨" },
-  { id: "settings", label: "Settings", icon: "⚙️" },
-  { id: "share", label: "Share", icon: "🚀" },
-  { id: "access", label: "Access", icon: "🔐" },
-  { id: "integrate", label: "Integrate", icon: "⚡" },
-  { id: "team", label: "Team", icon: "👥" },
+const TABS: { id: Tab; label: string }[] = [
+  { id: "build", label: "Build" },
+  { id: "design", label: "Design" },
+  { id: "settings", label: "Settings" },
+  { id: "share", label: "Share" },
+  { id: "access", label: "Access" },
+  { id: "integrate", label: "Integrate" },
+  { id: "team", label: "Team" },
 ];
 
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
@@ -280,7 +280,7 @@ export default function FormBuilderPage() {
           {TABS.map((t) => (
             <button key={t.id} type="button" onClick={() => setTab(t.id)} aria-selected={tab === t.id} role="tab"
               className={`whitespace-nowrap rounded-t-lg px-3 py-2 text-xs font-medium ${tab === t.id ? "border-b-2 border-zinc-900 text-zinc-900" : "text-zinc-500 hover:text-zinc-900"}`}>
-              <span className="mr-1" aria-hidden="true">{t.icon}</span>{t.label}
+              {t.label}
             </button>
           ))}
         </nav>
