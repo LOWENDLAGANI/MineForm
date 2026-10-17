@@ -7,6 +7,7 @@ import { HeaderBar } from "@/components/app/HeaderBar";
 import { SetupNotice } from "@/components/app/SetupNotice";
 import { getBrowserSupabase, supabaseEnvMissing } from "@/lib/supabase-browser";
 import { DashboardExtras } from "@/components/dashboard/DashboardExtras";
+import { SupportFooter } from "@/components/app/SupportFooter";
 
 interface FormRow {
   id: string; title: string; slug: string; is_published: boolean;
@@ -160,6 +161,7 @@ export default function DashboardPage() {
           )}
         </div>
       </main>
+      <SupportFooter />
     </div>
   );
 }
