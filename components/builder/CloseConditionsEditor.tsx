@@ -70,7 +70,6 @@ export function CloseConditionsEditor({
           onChange={(e) => setCloseAt(e.target.value)}
           className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-900 focus:ring-1 focus:ring-inset focus:ring-zinc-900"
         />
-        <p className="mt-1 text-[11px] text-zinc-400">After this time.</p>
       </div>
 
       <div>

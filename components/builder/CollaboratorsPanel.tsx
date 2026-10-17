@@ -52,10 +52,6 @@ export function CollaboratorsPanel({
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-400">
-        Editors can change questions and settings. Viewers can read responses only.
-        {ownerEmail ? ` You (${ownerEmail}) are the owner.` : ""}
-      </p>
       {loading ? (
         <div className="space-y-2" aria-hidden="true">
           <div className="h-10 animate-pulse rounded-md bg-zinc-100" />

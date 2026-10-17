@@ -65,7 +65,6 @@ export function SharePanel({
             Save
           </button>
         </div>
-        <p className="mt-1 text-[11px] text-zinc-400">Lowercase letters, numbers and dashes. Changing this breaks old links.</p>
       </section>
 
       <section>
@@ -129,7 +128,6 @@ export function SharePanel({
             onExpiryChange(v ? new Date(`${v}T23:59:59Z`).toISOString() : null);
           }}
           className={`mt-1 ${input}`} />
-        <p className="mt-1 text-[11px] text-zinc-400">After this date the public link stops accepting responses.</p>
       </section>
     </div>
   );

@@ -13,10 +13,6 @@ export function HiddenFieldsEditor({
 }) {
   return (
     <div className="space-y-2">
-      <p className="text-[11px] text-zinc-400">
-        Capture URL params like <code className="font-mono">?utm_source=x</code> with each response. Use them in ending
-        messages with <code className="font-mono">{"{{field:utm_source}}"}</code>.
-      </p>
       {fields.map((f, i) => (
         <div key={i} className="flex items-center gap-2">
           <code className="shrink-0 font-mono text-xs text-zinc-400">{"{{field:"}</code>

@@ -47,7 +47,6 @@ export function DesignEditor({
               className="h-8 w-10 cursor-pointer rounded border border-zinc-300 bg-white p-0.5" aria-label="Custom accent color" />
           </label>
         </div>
-        <p className="mt-1.5 text-[11px] text-zinc-400">Colors buttons and inputs on the public form.</p>
       </section>
 
       <section className="grid grid-cols-2 gap-3">

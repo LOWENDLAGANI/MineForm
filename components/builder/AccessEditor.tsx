@@ -62,7 +62,6 @@ export function AccessEditor({
 
       <section>
         <span className={label}>Country allowlist</span>
-        <p className="text-[11px] text-zinc-400">Empty = every country. Detected via Vercel geo headers.</p>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {COMMON_COUNTRIES.map((c) => (
             <button key={c} type="button" disabled={saving} onClick={() => toggleCountry(c)}
@@ -75,7 +74,6 @@ export function AccessEditor({
 
       <section>
         <span className={label}>Device allowlist</span>
-        <p className="text-[11px] text-zinc-400">Empty = all devices.</p>
         <div className="mt-2 flex gap-2">
           {(["mobile", "desktop"] as const).map((d) => (
             <button key={d} type="button" disabled={saving} onClick={() => toggleDevice(d)}

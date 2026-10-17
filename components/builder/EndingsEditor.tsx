@@ -27,9 +27,6 @@ export function EndingsEditor({
         <textarea id="e-default" rows={2} disabled={saving} defaultValue={value.default_message ?? "Thanks for your response!"}
           onBlur={(e) => onChange({ ...value, default_message: e.target.value || "Thanks for your response!" })}
           className={`mt-1 ${input} resize-y`} />
-        <p className="mt-1 text-[11px] text-zinc-400">
-          Pipe answers in with <code className="font-mono">{"{{answer:1}}"}</code> (question position) or hidden fields with <code className="font-mono">{"{{field:utm_source}}"}</code>.
-        </p>
       </section>
 
       {endings.map((e) => (

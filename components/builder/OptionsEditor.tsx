@@ -48,9 +48,6 @@ export function OptionsEditor({
             </button>
           ))}
         </div>
-        {scoringEnabled && (
-          <p className="mt-2 text-[11px] text-zinc-400">Scoring: the picked rating value counts as points.</p>
-        )}
       </div>
     );
   }

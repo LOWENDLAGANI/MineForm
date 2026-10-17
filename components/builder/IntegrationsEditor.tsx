@@ -19,7 +19,6 @@ export function IntegrationsEditor({
         <input id="i-webhook" type="url" disabled={saving} defaultValue={value.webhook_url ?? ""}
           onBlur={(e) => onChange({ webhook_url: e.target.value.trim() || null })}
           placeholder="https://hooks.zapier.com/…" className={`mt-1 ${input}`} />
-        <p className="mt-1 text-[11px] text-zinc-400">POSTs the full response JSON — Zapier, Make, n8n, your own API.</p>
       </section>
 
       <section>
@@ -27,7 +26,6 @@ export function IntegrationsEditor({
         <input id="i-slack" type="url" disabled={saving} defaultValue={value.slack_webhook_url ?? ""}
           onBlur={(e) => onChange({ slack_webhook_url: e.target.value.trim() || null })}
           placeholder="https://hooks.slack.com/services/…" className={`mt-1 ${input}`} />
-        <p className="mt-1 text-[11px] text-zinc-400">Posts a one-line summary to a channel.</p>
       </section>
 
       <section>
@@ -35,11 +33,6 @@ export function IntegrationsEditor({
         <input id="i-sheet" type="url" disabled={saving} defaultValue={value.sheet_webhook_url ?? ""}
           onBlur={(e) => onChange({ sheet_webhook_url: e.target.value.trim() || null })}
           placeholder="https://script.google.com/macros/s/…/exec" className={`mt-1 ${input}`} />
-        <p className="mt-1 text-[11px] text-zinc-400">
-          Free Sheets sync without OAuth: in your sheet choose Extensions → Apps Script, paste
-          <code className="mx-1 font-mono">function doPost(e) &#123; const d = JSON.parse(e.postData.contents); SpreadsheetApp.getActiveSheet().appendRow([d.response_id, d.submitted_at, ...Object.values(d).slice(2)]); &#125;</code>
-          then deploy as web app and paste the /exec URL here.
-        </p>
       </section>
     </div>
   );

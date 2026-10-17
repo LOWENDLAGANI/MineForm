@@ -411,10 +411,6 @@ export default function FormBuilderPage() {
             </section>
             <section>
               <h2 className="mb-2 text-xs font-medium text-zinc-900">Languages</h2>
-              <p className="mb-2 text-[11px] text-zinc-400">
-                Add locale codes (e.g. <code className="font-mono">es</code>, <code className="font-mono">de</code>, <code className="font-mono">ar</code> — first is the default).
-                Then translate each question in the Build tab. RTL locales render right-to-left automatically.
-              </p>
               <div className="flex flex-wrap gap-1.5">
                 {(locales.length > 0 ? locales : ["en"]).map((l, i) => (
                   <span key={`${l}-${i}`} className="flex items-center gap-1 rounded-full border border-zinc-300 px-2.5 py-1 font-mono text-[11px] text-zinc-700">
@@ -541,7 +537,6 @@ function PublishTemplateButton({ formId, questionCount, onDone }: {
 
   return (
     <div>
-      <p className="text-[11px] text-zinc-400">Free community marketplace — anyone browsing MineForm can start from your question set.</p>
       <div className="mt-2 flex gap-2">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Template name" maxLength={120}
           className={input} aria-label="Template name" />

@@ -34,6 +34,18 @@ export default function LoginPage() {
     })();
   }, [router]);
 
+  async function forgotPassword() {
+    setError(null); setNotice(null);
+    if (!email) { setError("Enter your email first."); return; }
+    const supabase = getBrowserSupabase();
+    if (!supabase) { setError("Supabase not configured."); return; }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) setError(error.message);
+    else setNotice("Check your email for a reset link.");
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true); setError(null); setNotice(null);
@@ -99,6 +111,15 @@ export default function LoginPage() {
                 {busy ? "Working…" : mode === "signin" ? "Sign in" : "Sign up"}
               </button>
             </form>
+
+            {mode === "signin" && (
+              <button
+                type="button" onClick={forgotPassword}
+                className="mt-3 text-xs text-zinc-500 hover:text-blue-600"
+              >
+                Forgot password?
+              </button>
+            )}
 
             <button
               type="button"

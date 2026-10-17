@@ -14,10 +14,7 @@ export function ScoringEditor({
   return (
     <div className="space-y-3">
       <label className="flex items-center justify-between gap-3">
-        <span>
-          <span className="block text-xs font-medium text-zinc-900">Scoring / quiz mode</span>
-          <span className="block text-[11px] text-zinc-400">Assign points to options; score is computed server-side</span>
-        </span>
+        <span className="block text-xs font-medium text-zinc-900">Scoring / quiz mode</span>
         <input type="checkbox" disabled={saving} checked={enabled}
           onChange={(e) => onChange({ enabled: e.target.checked })} className="h-4 w-4 shrink-0 accent-zinc-900" />
       </label>
