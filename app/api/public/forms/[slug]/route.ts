@@ -99,7 +99,6 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ slug: stri
         // Access gates — booleans only, no secrets:
         has_password: hasPassword(form.access_config as Record<string, unknown> | null),
         is_link_expired: isLinkExpired(form.access_config as Record<string, unknown> | null),
-        unique_email: settings.unique_email === true,
         locales: Array.isArray(settings.locales) ? settings.locales : [],
         hidden_fields: Array.isArray(settings.hidden_fields) ? settings.hidden_fields : [],
         scoring_enabled: scoring.enabled === true,

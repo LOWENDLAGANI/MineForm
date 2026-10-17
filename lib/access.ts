@@ -32,7 +32,13 @@ export function hasPassword(cfg: AccessCheckInput["access_config"]): boolean {
 export async function verifyPassword(cfg: AccessCheckInput["access_config"], candidate: string | null): Promise<boolean> {
   if (!hasPassword(cfg)) return true;
   if (!candidate) return false;
-  return (await sha256Hex(candidate)) === cfg?.password_hash;
+  const expected = cfg?.password_hash ?? "";
+  const actual = await sha256Hex(candidate);
+  // Constant-time compare — a plain === would leak the hash byte-by-byte.
+  if (actual.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < actual.length; i++) diff |= actual.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
 }
 
 export function detectDevice(userAgent: string | null): "mobile" | "desktop" {

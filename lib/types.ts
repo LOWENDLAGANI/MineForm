@@ -153,7 +153,7 @@ export const FormSettingsSchema = z
     progress_bar: z.boolean().default(true),
     /** Hidden URL params captured with each response (UTM etc). */
     hidden_fields: z.array(z.string().min(1).max(60).regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/)).max(20).default([]),
-    /** One response per verified email. */
+    /** One response per verified email. (Deprecated — email verification was removed; kept so legacy form data still parses.) */
     unique_email: z.boolean().default(false),
     /** Allow browser autofill hints on name/email fields. */
     autocomplete: z.boolean().default(true),
@@ -246,7 +246,7 @@ export type DesignConfig = z.infer<typeof DesignConfigSchema>;
  * ------------------------------------------------------------------------- */
 export const IntegrationsSchema = z
   .object({
-    /** Email the form owner on every new response. */
+    /** (Deprecated — owner email notifications were removed; kept so legacy form data still parses.) */
     notify_email: z.boolean().default(false),
     /** Generic outgoing webhook — POSTs the sealed response JSON. */
     webhook_url: z.string().url().max(1000).nullable().default(null),
@@ -254,7 +254,7 @@ export const IntegrationsSchema = z
     slack_webhook_url: z.string().url().max(1000).nullable().default(null),
     /** Google Sheets sync via an Apps Script webhook (free, no OAuth). */
     sheet_webhook_url: z.string().url().max(1000).nullable().default(null),
-    /** Weekly email digest of the last 7 days of responses. */
+    /** (Deprecated — weekly email digest was removed; kept so legacy form data still parses.) */
     weekly_report: z.boolean().default(false),
   })
   .strict();
@@ -315,7 +315,6 @@ export const FormSchema = z
     time_limit_minutes: z.number().int().positive().nullable(),
     response_cap: z.number().int().positive().nullable(),
     renderer_mode: z.enum(["classic", "conversational"]).default("classic"),
-    send_confirmation_email: z.boolean().default(false),
     close_config: CloseConfigSchema.default({ conditions: [] }),
     theme_config: ThemeConfigSchema,
     settings: FormSettingsSchema.default({}),

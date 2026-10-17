@@ -41,7 +41,7 @@ interface FormState {
   design_config: Partial<DesignConfig>;
   integrations: Partial<Integrations>;
   access_config: Partial<AccessConfig>;
-  send_confirmation_email: boolean; close_config: CloseConfigValue; is_published: boolean;
+  close_config: CloseConfigValue; is_published: boolean;
 }
 
 type Tab = "build" | "design" | "settings" | "share" | "access" | "integrate" | "team";
@@ -113,7 +113,6 @@ export default function FormBuilderPage() {
         design_config: (data.form.design_config as Partial<DesignConfig>) ?? {},
         integrations: (data.form.integrations as Partial<Integrations>) ?? {},
         access_config: (data.form.access_config as Partial<AccessConfig>) ?? {},
-        send_confirmation_email: (data.form.send_confirmation_email as boolean) ?? false,
         close_config: (data.form.close_config as CloseConfigValue) ?? { close_at: null, conditions: [] },
         is_published: (data.form.is_published as boolean) ?? false,
       });
@@ -157,7 +156,6 @@ export default function FormBuilderPage() {
           title: data.form.title, description: data.form.description, slug: data.form.slug,
           time_limit_minutes: data.form.time_limit_minutes, response_cap: data.form.response_cap,
           renderer_mode: data.form.renderer_mode ?? f.renderer_mode,
-          send_confirmation_email: data.form.send_confirmation_email ?? f.send_confirmation_email,
           close_config: data.form.close_config ?? f.close_config, is_published: data.form.is_published,
           theme_config: data.form.theme_config ?? f.theme_config,
           settings: data.form.settings ?? f.settings,
@@ -376,16 +374,6 @@ export default function FormBuilderPage() {
 
         {tab === "design" && (
           <div className="max-w-xl space-y-6">
-            <div>
-              <label className={label}>Confirmation email to respondents</label>
-              <label className="mt-1 flex items-center justify-between gap-3 rounded-lg border border-zinc-200 p-3">
-                <span className="text-xs text-zinc-700">Send respondents a copy of their answers</span>
-                <input type="checkbox" disabled={saving || readOnly} checked={form.send_confirmation_email}
-                  onChange={(e) => patchForm({ send_confirmation_email: e.target.checked })}
-                  className="h-4 w-4 shrink-0 accent-zinc-900" />
-              </label>
-              <p className="mt-1 text-[11px] text-zinc-400">Uses the respondent's email question or verified email.</p>
-            </div>
             <DesignEditor value={form.design_config} accent={currentAccent} saving={saving || readOnly}
               onDesignChange={(patch) => patchForm({ design_config: { ...form.design_config, ...patch } })}
               onAccentChange={(accent) => patchForm({ theme_config: { ...form.theme_config, accent } })} />
@@ -469,15 +457,14 @@ export default function FormBuilderPage() {
 
         {tab === "access" && (
           <div className="max-w-xl">
-            <AccessEditor value={form.access_config} saving={saving || readOnly} uniqueEmail={form.settings.unique_email ?? false}
-              onChange={(access_config) => patchForm({ access_config: { ...form.access_config, ...access_config } })}
-              onSettingsChange={(patch) => patchForm({ settings: { ...form.settings, ...patch } })} />
+            <AccessEditor value={form.access_config} saving={saving || readOnly}
+              onChange={(access_config) => patchForm({ access_config: { ...form.access_config, ...access_config } })} />
           </div>
         )}
 
         {tab === "integrate" && (
           <div className="max-w-xl">
-            <IntegrationsEditor value={form.integrations} saving={saving} emailConfigured
+            <IntegrationsEditor value={form.integrations} saving={saving}
               onChange={(integrations) => patchForm({ integrations: { ...form.integrations, ...integrations } })} />
           </div>
         )}

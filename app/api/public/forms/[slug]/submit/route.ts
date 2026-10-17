@@ -11,7 +11,6 @@ import {
   type Question,
 } from "@/lib/types";
 import { isFormClosed } from "@/lib/close";
-import { answerPreview, sendConfirmationEmail, sendOwnerNotificationEmail } from "@/lib/email";
 import { checkGeoDevice, isLinkExpired, verifyPassword } from "@/lib/access";
 import { computeScore } from "@/lib/scoring";
 import { fireIntegrations } from "@/lib/webhooks";
@@ -34,8 +33,8 @@ export const dynamic = "force-dynamic";
  *     smuggle answers, required-but-visible questions must be answered
  *  7. Insert answers, compute quiz score, pick the matching custom ending,
  *     seal the response
- *  8. Fire integrations: respondent confirmation email, owner notification,
- *     generic webhook, Slack/Discord, Google Sheets (all best-effort)
+ *  8. Fire integrations: generic webhook, Slack/Discord, Google Sheets
+ *     (all best-effort)
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   try {
@@ -231,19 +230,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       .update({ recovery_token: null })
       .eq("id", response.id);
 
-    // -- Emails + webhooks (fire-and-forget; never block the response) -----
+    // -- Webhooks (fire-and-forget; never block the response) ----------
     const meta = (response.respondent_meta ?? {}) as {
-      email?: string;
-      verified_email?: string;
       hidden?: Record<string, string>;
       country?: string | null;
       device?: string | null;
     };
-    const emailQ = questions.find((q) => q.question_type === "email");
-    const emailAnswer = emailQ
-      ? answers.find((a) => a.questionId === emailQ.id)?.text ?? null
-      : null;
-    const respondentEmail = meta.verified_email ?? meta.email ?? emailAnswer;
 
     const byId = new Map(questions.map((q) => [q.id, q]));
     const answerEntries = answers
@@ -254,7 +246,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       }));
 
     const integrations = (form.integrations ?? {}) as {
-      notify_email?: boolean;
       webhook_url?: string | null;
       slack_webhook_url?: string | null;
       sheet_webhook_url?: string | null;
@@ -274,46 +265,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       hiddenFields,
     );
 
-    const emailJobs: Promise<boolean>[] = [];
-
-    // Respondent confirmation
-    if (form.send_confirmation_email && respondentEmail) {
-      emailJobs.push(
-        sendConfirmationEmail({
-          to: respondentEmail,
-          formTitle: form.title,
-          submittedAt: sealed.submitted_at,
-          entries: answerEntries,
-        }).catch(() => false),
-      );
-    }
-
-    // Owner notification
-    if (integrations.notify_email) {
-      emailJobs.push(
-        (async () => {
-          try {
-            const { data: owner } = await supabase.auth.admin.getUserById(form.user_id);
-            if (!owner?.user?.email) return false;
-            const origin = process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin;
-            return await sendOwnerNotificationEmail({
-              to: owner.user.email,
-              formTitle: form.title,
-              responseUrl: `${origin}/forms/${form.id}/responses`,
-              submittedAt: sealed.submitted_at,
-              entries: answerEntries,
-            });
-          } catch {
-            return false;
-          }
-        })(),
-      );
-    }
-
-    // Awaited briefly so Vercel keeps the invocation alive; failures are
+    // Awaited so Vercel keeps the invocation alive; failures are
     // swallowed — the submission must never fail because of an integration.
     await Promise.all([
-      ...emailJobs.map((p) => p.catch(() => undefined)),
       fireIntegrations(integrations, {
         event: "response.submitted",
         formId: form.id,
@@ -349,4 +303,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   } catch (err) {
     return handleError(err);
   }
+}
+
+/** Human-readable answer value for webhook payloads. */
+function answerPreview(text: string | null, json: unknown): string {
+  if (text !== null && text !== undefined) return text;
+  if (Array.isArray(json)) return json.map(String).join(", ");
+  if (json === null || json === undefined) return "";
+  if (typeof json === "object") return JSON.stringify(json);
+  return String(json);
 }

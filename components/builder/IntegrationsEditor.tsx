@@ -6,39 +6,14 @@ const input = "w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-
 const label = "block text-xs font-medium text-zinc-600";
 
 export function IntegrationsEditor({
-  value, saving, emailConfigured, onChange,
+  value, saving, onChange,
 }: {
   value: Partial<Integrations>;
   saving: boolean;
-  emailConfigured: boolean;
   onChange: (patch: Partial<Integrations>) => void;
 }) {
   return (
     <div className="space-y-4">
-      {!emailConfigured && (
-        <p className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
-          Email isn't configured yet (set <code className="font-mono">RESEND_API_KEY</code> in Vercel). Toggles still save — emails send once the key exists.
-        </p>
-      )}
-
-      <label className="flex items-center justify-between gap-3">
-        <span>
-          <span className="block text-xs font-medium text-zinc-900">Email me on every response</span>
-          <span className="block text-[11px] text-zinc-400">A summary of each new submission</span>
-        </span>
-        <input type="checkbox" disabled={saving} checked={value.notify_email ?? false}
-          onChange={(e) => onChange({ notify_email: e.target.checked })} className="h-4 w-4 shrink-0 accent-zinc-900" />
-      </label>
-
-      <label className="flex items-center justify-between gap-3">
-        <span>
-          <span className="block text-xs font-medium text-zinc-900">Weekly email digest</span>
-          <span className="block text-[11px] text-zinc-400">Every Monday, last 7 days (Vercel Cron)</span>
-        </span>
-        <input type="checkbox" disabled={saving} checked={value.weekly_report ?? false}
-          onChange={(e) => onChange({ weekly_report: e.target.checked })} className="h-4 w-4 shrink-0 accent-zinc-900" />
-      </label>
-
       <section>
         <label className={label} htmlFor="i-webhook">Outgoing webhook URL</label>
         <input id="i-webhook" type="url" disabled={saving} defaultValue={value.webhook_url ?? ""}

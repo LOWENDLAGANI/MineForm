@@ -21,6 +21,7 @@ interface PublicForm {
   is_capped: boolean;
   is_closed: boolean;
   close_at: string | null;
+  has_password: boolean;
 }
 
 type FieldValue = string | string[] | number | null;
@@ -111,6 +112,12 @@ export default function PublicFormPage() {
   const [draftCopied, setDraftCopied] = useState(false);
   const [resumedDraft, setResumedDraft] = useState(false);
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
+  // Password-protected forms: unlocked via the gate below; the password is
+  // re-sent to /start and (as a header) to /submit, which verify it again.
+  const [password, setPassword] = useState<string | null>(null);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [checkingPassword, setCheckingPassword] = useState(false);
   const [submittedAnswers, setSubmittedAnswers] = useState<
     { questionId: string; text?: string | null; json?: unknown }[] | null
   >(null);
@@ -219,9 +226,19 @@ export default function PublicFormPage() {
   const start = useCallback(async (withDraftValues?: Record<string, FieldValue>) => {
     setStarting(true);
     try {
-      const res = await fetch(`/api/public/forms/${slug}/start`, { method: "POST" });
+      const res = await fetch(`/api/public/forms/${slug}/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(password !== null ? { password } : {}),
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
+        // At capacity with a waiting room enabled — hand off to the queue
+        // page instead of dead-ending on an error card.
+        if (res.status === 429 && body?.error?.code === "WAITING_ROOM") {
+          window.location.assign(`/waiting-room/${slug}`);
+          return;
+        }
         setLoadError(body?.error?.message ?? "Could not start.");
         return;
       }
@@ -230,7 +247,34 @@ export default function PublicFormPage() {
       setExpiresAt(body.response.expires_at ?? null);
       if (withDraftValues) { setValues(withDraftValues); setLocalDraftPrompt(null); }
     } finally { setStarting(false); }
-  }, [slug]);
+  }, [slug, password]);
+
+  async function submitPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setCheckingPassword(true);
+    setPasswordError(null);
+    try {
+      // Resumed drafts already own a response row — just unlock with the
+      // password instead of starting a second one.
+      if (!responseId) {
+        const res = await fetch(`/api/public/forms/${slug}/start`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: passwordInput }),
+        });
+        const body = await res.json().catch(() => null);
+        if (!res.ok) {
+          setPasswordError(body?.error?.message ?? "Wrong password.");
+          return;
+        }
+        setResponseId(body.response.id);
+        setExpiresAt(body.response.expires_at ?? null);
+      }
+      setPassword(passwordInput);
+      // Restore any saved browser draft the gate skipped over.
+      if (localDraftPrompt) { setValues(localDraftPrompt); setLocalDraftPrompt(null); }
+    } finally { setCheckingPassword(false); }
+  }
 
   async function saveAndFinishLater() {
     if (!responseId) return;
@@ -263,7 +307,11 @@ export default function PublicFormPage() {
     setErrors({}); setSubmitting(true);
     try {
       const res = await fetch(`/api/public/forms/${slug}/submit`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(password !== null ? { "x-mineform-password": password } : {}),
+        },
         body: JSON.stringify({ responseId, answers }),
       });
       if (res.ok) {
@@ -333,6 +381,34 @@ export default function PublicFormPage() {
   if (form.is_closed || form.is_capped) return (
     <div className="brand-backdrop" style={themeStyle}>
       <StateCard icon="🔒" title="This form is closed" body={form.is_capped ? `Limit of ${form.response_cap} responses reached.` : "Not accepting responses."} />
+    </div>
+  );
+
+  if (form.has_password && password === null) return (
+    <div className="brand-backdrop" style={themeStyle}>
+      <main className="flex min-h-dvh items-center justify-center px-4 py-10">
+        <div className="card-in w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl shadow-blue-950/20">
+          <div className="bg-slate-800 px-6 py-4">
+            <h1 className="truncate text-base font-semibold text-white">{form.title}</h1>
+          </div>
+          <form onSubmit={submitPassword} className="space-y-3 px-6 py-6">
+            <p className="text-sm text-zinc-500">This form is password protected. Enter the password to continue.</p>
+            <input
+              type="password" required autoFocus value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              placeholder="Password" autoComplete="off"
+              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-zinc-900"
+            />
+            {passwordError && <p className="text-xs text-red-600" role="alert">{passwordError}</p>}
+            <button
+              type="submit" disabled={checkingPassword}
+              className="accent-bg w-full rounded-full px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/30 transition-all active:scale-[0.99] disabled:opacity-50"
+            >
+              {checkingPassword ? "Checking…" : "Continue"}
+            </button>
+          </form>
+        </div>
+      </main>
     </div>
   );
 

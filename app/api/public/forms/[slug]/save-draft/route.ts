@@ -59,7 +59,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
 
     const { data: response } = await supabase
       .from("responses")
-      .select("id, form_id, submitted_at, expires_at, recovery_token")
+      .select("id, form_id, submitted_at, expires_at, recovery_token, respondent_meta")
       .eq("id", body.responseId)
       .single();
 
@@ -114,9 +114,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     }
 
     if (body.email) {
+      // Merge — a replace here would wipe hidden fields / geo captured at start.
       const upd = await supabase
         .from("responses")
-        .update({ respondent_meta: { email: body.email } })
+        .update({ respondent_meta: { ...(response.respondent_meta ?? {}), email: body.email } })
         .eq("id", response.id)
         .is("submitted_at", null);
       if (upd.error) throw upd.error;

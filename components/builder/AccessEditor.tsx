@@ -9,13 +9,11 @@ const label = "block text-xs font-medium text-zinc-600";
 const COMMON_COUNTRIES = ["US", "GB", "DE", "FR", "ES", "IT", "BR", "IN", "CA", "AU", "NL", "PH", "ID", "MY", "SG"];
 
 export function AccessEditor({
-  value, saving, uniqueEmail, onChange, onSettingsChange,
+  value, saving, onChange,
 }: {
   value: Partial<AccessConfig>;
   saving: boolean;
-  uniqueEmail: boolean;
   onChange: (patch: Partial<AccessConfig>) => void;
-  onSettingsChange: (patch: { unique_email: boolean }) => void;
 }) {
   const [passwordDraft, setPasswordDraft] = useState("");
   const hasPassword = !!value.password_hash;
@@ -60,18 +58,6 @@ export function AccessEditor({
             Remove password
           </button>
         )}
-      </section>
-
-      <section>
-        <label className="flex items-center justify-between gap-3">
-          <span>
-            <span className="block text-xs font-medium text-zinc-900">One response per email</span>
-            <span className="block text-[11px] text-zinc-400">Respondents verify their email before starting</span>
-          </span>
-          <input type="checkbox" disabled={saving} checked={uniqueEmail}
-            onChange={(e) => onSettingsChange({ unique_email: e.target.checked })}
-            className="h-4 w-4 shrink-0 accent-zinc-900" />
-        </label>
       </section>
 
       <section>

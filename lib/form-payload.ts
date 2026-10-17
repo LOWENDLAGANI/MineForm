@@ -46,7 +46,6 @@ export const FormFeatureFieldsSchema = z
     time_limit_minutes: z.number().int().positive().nullable().optional(),
     response_cap: z.number().int().positive().nullable().optional(),
     renderer_mode: z.enum(["classic", "conversational"]).optional(),
-    send_confirmation_email: z.boolean().optional(),
     close_config: CloseConfigSchema.optional(),
     theme_config: ThemeConfigSchema.partial().passthrough().optional(),
     settings: FormSettingsSchema.partial().optional(),

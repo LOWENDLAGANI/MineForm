@@ -6,7 +6,7 @@ import { apiError, type ApiErrorCode } from "@/lib/types";
 import { issueRecoveryToken } from "@/lib/drafts";
 import { isFormClosed } from "@/lib/close";
 import { expectDbOk } from "@/lib/db-errors";
-import { checkGeoDevice, isLinkExpired, sha256Hex, verifyPassword } from "@/lib/access";
+import { checkGeoDevice, isLinkExpired, verifyPassword } from "@/lib/access";
 import { recordActiveUser, removeActiveUser, getActiveUserCount, getWaitingRoomConfig, enterWaitingRoom, tryAdmitNext, getQueuePosition, getSessionBySessionId, clearWaitingRoomSession, getWaitingQueue } from "@/lib/waiting-room";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +15,6 @@ const StartSchema = z
   .object({
     /** Plaintext password for password-protected forms. */
     password: z.string().max(200).nullable().optional(),
-    /** Verified email for unique-email forms (from the verify-email flow). */
-    verifiedEmail: z.string().email().max(200).nullable().optional(),
     /** Hidden URL params (UTM etc.) captured by the client. */
     hidden: z.record(z.string().max(300)).optional(),
     locale: z.string().max(8).nullable().optional(),
@@ -30,8 +28,7 @@ const StartSchema = z
  * Creates a response row. Server stamps started_at and (via trigger)
  * expires_at from the form's time_limit_minutes — the client never sends a
  * deadline. Gates (all server-side): published, not closed, under cap, link
- * not expired, password correct, country/device allowed, email verified
- * when the form requires one-response-per-email.
+ * not expired, password correct, country/device allowed.
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   try {
@@ -55,6 +52,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       throw apiError("LINK_EXPIRED", "This form link has expired", 403);
     }
 
+    // -- Password (also re-checked at submit) --------------------------------
+    const passwordOk = await verifyPassword(
+      form.access_config as { password_hash?: string | null } | null,
+      body.password ?? null,
+    );
+    if (!passwordOk) throw apiError("PASSWORD_REQUIRED", "Wrong password", 401);
+
     // -- Waiting room session check ------------------------------------------
     // If the user has a waiting room session, verify they've been admitted
     const waitingRoomSessionId = body.waitingRoomSessionId ?? null;
@@ -77,38 +81,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       }
     }
 
-    // -- One response per verified email ---------------------------------------
-    const settings = (form.settings ?? {}) as { unique_email?: boolean; hidden_fields?: string[] };
-    const verifiedEmail = body.verifiedEmail?.toLowerCase() ?? null;
-    if (settings.unique_email) {
-      if (!verifiedEmail) {
-        throw apiError("EMAIL_VERIFICATION_REQUIRED", "Verify your email to start", 401);
-      }
-      const tokenHash = await sha256Hex(verifiedEmail);
-      // A verified row for this email must exist (created by verify-email).
-      const { data: verRows } = await supabase
-        .from("email_verifications")
-        .select("id")
-        .eq("form_id", form.id)
-        .eq("email", verifiedEmail)
-        .not("verified_at", "is", null)
-        .limit(1);
-      if (!verRows || verRows.length === 0) {
-        throw apiError("EMAIL_VERIFICATION_REQUIRED", "Verify your email to start", 401);
-      }
-      void tokenHash;
-
-      const { data: dup } = await supabase
-        .from("responses")
-        .select("id")
-        .eq("form_id", form.id)
-        .not("submitted_at", "is", null)
-        .eq("respondent_meta->>verified_email", verifiedEmail)
-        .limit(1);
-      if (dup && dup.length > 0) {
-        throw apiError("DUPLICATE_EMAIL", "This email already submitted a response", 409);
-      }
-    }
+    // -- Respondent metadata ----------------------------------------------
+    const settings = (form.settings ?? {}) as { hidden_fields?: string[] };
 
     // -- Response cap ------------------------------------------------------------
     // Get the waiting room config for this form
@@ -148,7 +122,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     }
 
     // Respondent metadata: hidden fields, country/device (self-reported by
-    // server headers), locale, verified email.
+    // server headers), locale.
     const allowedHidden = new Set(settings.hidden_fields ?? []);
     const hidden: Record<string, string> = {};
     for (const [k, v] of Object.entries(body.hidden ?? {})) {
@@ -160,7 +134,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       country: req.headers.get("x-vercel-ip-country") ?? null,
       device: /Android|iPhone|iPad|iPod|Mobile/i.test(req.headers.get("user-agent") ?? "") ? "mobile" : "desktop",
     };
-    if (verifiedEmail) meta.verified_email = verifiedEmail;
     if (body.locale) meta.locale = body.locale;
 
     // The DB gate triggers are the authoritative backstop (e.g. a conditional

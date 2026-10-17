@@ -115,7 +115,6 @@ export async function POST(req: NextRequest) {
         time_limit_minutes: body.time_limit_minutes ?? null,
         response_cap: body.response_cap ?? null,
         renderer_mode: body.renderer_mode,
-        send_confirmation_email: body.send_confirmation_email,
         close_config: body.close_config,
         theme_config,
         settings: body.settings ?? {},
