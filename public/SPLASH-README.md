@@ -1,5 +1,7 @@
 # Branding splash images
 
+Test edit
+
 The splash screen (`components/app/SplashScreen.tsx`) shows one of these two
 images on a hard page load, holds it for ~2 seconds while the app loads
 silently behind it, then blurs and fades it out.
